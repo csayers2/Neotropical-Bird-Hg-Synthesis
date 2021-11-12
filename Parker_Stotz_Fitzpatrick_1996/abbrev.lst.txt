@@ -1,0 +1,127 @@
+              Codes used in databases
+
+See chapter 12 for details of most of these codes; habitats are described
+and defined in chapter 2.
+
+Codes for databases A, C, D, and E (files adata.txt, cdata.txt, ddata.txt and
+edata.txt):
+
+Snst  - Sensitivity [2]
+  L - Low; M - Medium; H - High.
+
+Stat  - Status [1]
+  A - All; F - Fraction; S - Some; T - Total.
+
+Strat  - Foraging Strata  [3]
+  T - Terrestrial; U - Understory; M - Midstory; C - Canopy; A - Aerial;
+  W - Water. 
+
+Cntab - Center of Abundance [5]
+  LT - Lower tropical; LS - Lower subtropical; HT - Hill tropical; UT -
+  Upper tropical; US - Upper subtropical; MM - Middle montane; UM - 
+  Upper  montane.
+
+Rel - Relative Abundance [3]
+  R - Rare; U - Uncommon; F - Fairly common; C - Common; P -
+  Patchily distributed.
+
+Min - Minimum Elevation [4]
+  0 - Lowlands (see intro.use); numeric values in meters.
+
+Qmin - Minimum elevation qualifier [1]
+  ? - Uncertain value.   
+
+Max - Maximum Elevation [4]
+  0 - Lowlands (see intro.use); numeric values in meters.
+
+Qmax - Maximum elevation qualifier [1]
+  ? - Uncertain value; + - species occurs at least to given elevation but
+  likely occurs higher.   
+
+CP -Conservation Priority [1]
+  1 - Urgent; 2 - High; 3 - Medium; 4 - Low.
+
+RP - Research Priority [1]
+  1 - High; 2 - Medium; 3 - Low.
+
+Micro - Microhabitats [3]
+  A - Army ants; B - Bamboo; T - Treefalls; G - Ground bromeliads; C -
+  Rocky outcrops and caves; S - Streamside; V - Vine tangles; B/V -
+  Bamboo/vine tangles.
+
+Habitats [3; 1 for specific habitat fields]
+  F1 - Tropical lowland evergreen forest; F2 - Flooded tropical evergreen
+  forest; F3 - River-edge forest;  F4 - Montane evergreen forest; F5 -
+  Elfin forest; F6 - Polylepis woodland; F7 - Tropical deciduous forest;
+  F8 - Gallery forest; F9 - Southern temperate forest; F10 - Pine forest;
+  F11 - Pine-oak forest; F12 - White sand forest; F13 - Palm forest; F14 -
+  Mangrove forest; F15 - Secondary forest; N1 - Arid lowland scrub; N2 -
+  Arid montane scrub; N3 - Semihumid/humid montane scrub; N4 -
+  Cerrado; N5 - Campo grasslands; N6 - Low, seasonally wet grassland;
+  N7 - Southern temperate grassland; N8 - Northern temperate grassland;
+  N9 - Puna grassland; N10 - Paramo grassland; N11 - Riparian thickets;
+  N12 - River island scrub; N13 - Pastures/agricultural lands; N14 -
+  Second-growth scrub; A1 - Freshwater marshes; A2 -Saltwater/brackish 
+  marshes; A3 - Coastal sand beaches/mudflats; A4 - Coastal rocky
+  beaches; A5 - Riverine sand beaches;  A6 - Freshwater lakes and ponds;
+  A7 - Alkaline lakes; A8 - Rivers; A9 - Streams; A10 - Bogs; A11 -
+  Coastal waters; A12 - Pelagic waters.
+  E - Edge (used as a modifer to particular habitats).
+
+Sub - Subregions [3]
+  ARC - Arid Caribbean Coast; AWA - Altiplano and Western Andes;
+  BAH - Bahamas; BAJ - Baja California; CAA - Caatinga; CAH -
+  Central American Highlands; CER - Cerrado; CHA - Chaco; CHG -
+  Chiapas-Guanacaste; CHL - Chilean Desert; CHR - Chiriqu¡; CIS -
+  Cocos Island; CMV - Cauca-Magdalena Valley; COC - Cuzco-
+  Cochabamba; CUB - Cuba; DOM - Dominica; EAS - Eastern Slope
+  Andes; FDN - Fernando de Noronha; GAL - Gal pagos; GCM - Gulf
+  Coast-Mexico; GRE - Grenada; GUA - Guadeloupe; GUI - Guianan;
+  HIS - Hispaniola; HPC - Humid Pacific Coast; ISA - Isla Providencia 
+  and Isla San Andr‚s; JAM - Jamaica; JFI - Juan Fern ndez Islands;
+  MAN - Manab¡-Tumbes; MAR - Mara¤¢n Valley; MID - Madeira-
+  Tapaj¢s; MON - Montserrat; MRT - Martinique; MTC - Mara¤¢n-
+  Cuzco; NMM - Northern Mexican Mountains; NOR - Northern Coastal
+  Brazil; PAR - Par ; PER - Peruvian     Desert; PUE - Puerto Rico; RDJ
+  - Rio de Janeiro-Bahia Lowlands; RMW - Rio Madeira  West; RNW -
+  Rio Negro West; SCA - Southern Central America; SCT - Santa Cruz-
+  Tucum n; SIN - Sinaloa-Oaxaca; SMH - Southern Mexican Highlands;
+  SMT - Santa Marta; SOC - Islas Revillagigedo (Socorro Island group);
+  SON - Sonoran Desert; SOU - Southern Atlantic Coast; STL - St.
+  Lucia; STV - St. Vincent; TAC - Tacarcuna; VAN - Venezuelan Andes; 
+VNZ - Venezuelan Coastal Mountains; WES - Western Andes; YUC - 
+Yucat n Peninsula.
+o - Endemic to region, but not restricted to a single subregion.
+    
+Zoogeographic Regions [1 for specific region fields]
+  AMN - Northern Amazonia; AMS - Southern Amazonia; ATL -
+  Atlantic Forest; BSR - Baja-Sonora; CAN - Central Andes; CDH -
+  Chiriqu¡-Dari‚n Highlands; CHO - Choc¢ Lowlands; CSA - Central
+  South  America; EPC - Equatorial Pacific Coast; GAN - Greater
+  Antilles; GCS - Gulf-Caribbean Slope; LAN - Lesser Antilles; MAH -
+  Madrean Highlands; MPL - Mexican  Plateau; NAN - Northern Andes;
+  NSA - Northern South America; PAM - Pampas; PAS - Pacific Arid
+  Slope; PAT - Patagonia; SAN - Southern  Andes; STP - Subtropical
+  Pacific; TEP - Tepuis.
+ 
+Codes for database E (file edata.txt):
+
+Countries: 
+  Argn - Argentina; Baha - Bahamas; Beli - Belize; Boli - Bolivia; Braz -
+  Brazil; Chil - Chile; Colo - Colombia; Cost - Costa Rica; Cuba - Cuba;
+  Ecua - Ecuador; Elsa - El Salvador; Fren - French Guiana; Guat -
+  Guatemala; Guya - Guyana; Hisp - Hispaniola; Hond - Honduras; Jama
+  - Jamaica; Lant - Lesser Antilles; Mexi - Mexico; Nant - Netherland
+  Antilles; Nica - Nicaragua; Pana - Panama; Parg - Paraguay; Peru -
+  Peru; Puer - Puerto Rico; Suri - Suriname; Trin - Trinidad; Urug -
+  Uruguay; Vene - Venezuela.
+
+Status [2]
+  X - Breeding species; XN - Regular non-breeding species; XR -
+  Endemic breeding species; X? - Regular species, breeding status
+  uncertain; XI - Introduced species; XD - Dubious species; XF -
+  Formerly  bred; V - Vagrants; SX - Breeding species, sight records
+  only; SN - Regular non-breeding species, sight records only; S? -
+  Uncertain breeding status; sight records only; SI - Introduced; sight
+  records only; SV - Vagrant; sight records only. ? - Occurrence
+  uncertain;  + - Extinct.
