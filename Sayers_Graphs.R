@@ -480,7 +480,7 @@ library(raster)
 
 # Google satellite imagery as a background
 library(ggmap)
-register_google(key = "AIzaSyAhVAGnjiPZgt0KtXSO_Od2j67CF6wEmD8", write = TRUE) # Chris' personal key
+register_google(key = "Insert your Google API key here", write = TRUE)
 
 # Blood map with points as circles
 MapData <- GraphingData %>%
