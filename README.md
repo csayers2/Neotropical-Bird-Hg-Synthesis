@@ -10,9 +10,9 @@ El monitoreo de la contaminación antropogénica de mercurio (Hg) en la vida sil
 
 ### Author's Note/Instructions:
 
-Hello! And welcome to this open access repository for Sayers et al. (2022), submitted to Science of the Total Environment. Here you will find the majority of materials necessary to reproduce the results published in the manuscript. Summary.R contains all of the data exploration computations, as well as the computations in order to produce the final model set. However, you will need to download the NLCD 2016 Land Cover (CONUS) dataset from https://www.mrlc.gov/data, and set the directory on your personal computer, for Sayers_Main_Script.R to run properly. Sayers_Radius_Selection.R contains the land cover extraction and model selection for the "scale of effect" approach applied from Jackson and Fahrig (2012). Lastly, Sayers_Graphs.R contains all of the code necessary to produce the published figures.
+Hello! And welcome to this open access repository for Sayers et al. (2022), submitted to Science of the Total Environment. Here you will find all of the materials necessary to reproduce the results published in the manuscript. Sayers_Main_Script.R contains all of the data transformation computations, as well as the computations in order to produce the final linear mixed model. Sayers_Graphs.R contains all of the code necessary to produce the published figures.
 
-If you have any issues or general questions, please feel free to email me at chris.sayers@briwildlife.org. Enjoy!
+If you have any issues, general questions, or would like to collaborate with the Tropical Research for Avian Conservation and Ecotoxicology (TRACE) Initiative, please feel free to email me at chris.sayers@briwildlife.org or visit us at https://briwildlife.org/trace/. Enjoy!
 
 Cheers,
 
