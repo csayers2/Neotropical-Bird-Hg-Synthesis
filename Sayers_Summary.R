@@ -58,7 +58,7 @@ TRACEData <- read_excel("TRACE_Database_09072021.xlsx", sheet = "All Tropical Bi
 
 ##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2019 CLASSIFICATIONS #####
 
-taxa <- read_excel("Spreadsheets/eBird-Clements-v2019-integrated-checklist-August-2019.xlsx") %>%
+taxa <- read_excel("eBird-Clements-v2019-integrated-checklist-August-2019.xlsx") %>%
   rename(Species_Latin_Name = `scientific name`, Order = order, Family = family) %>% # renaming key column names
   select(Species_Latin_Name, Order, Family)
 
