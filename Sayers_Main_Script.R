@@ -1488,3 +1488,169 @@ CollectiveData %>%
   summarize(n = n()) %>% # Consolidating to 1 row per species
   view() %>% 
   write.csv("SpeciesClass.csv")
+  
+  
+#----------------------- DATA VISUALIZATION ------------------------------------
+library(tidyverse)
+
+# creating a data frame for modeling purposes
+HgSamples <- CollectiveData %>%
+  # adding tissue type as a data field 
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "HgConcentration") %>% 
+  # removing NA values in key variables so the models can run
+  filter(!is.na(HgConcentration), !is.na(Trophic_Niche), !is.na(HAB1),
+         !is.na(STATUS), !is.na(Mining_Present_Yes_No)) %>%
+  # Creating new column with natural-log transformed THg concentrations
+  mutate(lHgConcentration = log(HgConcentration)) %>% 
+  # only including full species names
+  filter(!(str_detect(Species_Common_Name, " sp."))) %>%
+  # Creating new column with date to capture annual trends
+  mutate(Date = make_date(Year, Month, Day))
+  
+  
+# much of the strategy below is from Zurr et al. (2010)  https://doi.org/10.1111/j.2041-210X.2009.00001.x
+
+# OUTLIERS & NORMALITY OF RESPONSE VARIABLE ----------
+ggdensity(HgSamples$HgConcentration, xlab = "Hg Concentration (µg/g)") # some high outliers 
+ggqqplot(HgSamples$HgConcentration, ylab = "Hg Concentration (µg/g)") # tails stray from far from normal
+shapiro.test(HgSamples$HgConcentration) # W = 0.22158, p-value < 2.2e-16, not normal
+# log-transformation may be necessary for linear models
+
+# log-transformed data diagnostics
+ggdensity(HgSamples$lHgConcentration, xlab = "ln(Hg) Concentration (µg/g)")
+ggqqplot(HgSamples$lHgConcentration) # much better than before
+shapiro.test(HgSamples$lHgConcentration) # W = 0.992, p-value = 1.26e-07, not normal
+
+# Boxplot & Cleavland dotplot of raw data by Family
+boxplot(HgSamples$HgConcentration ~ HgSamples$Family)
+ggplot(HgSamples, aes(x = HgConcentration, y = Family, color = Tissue_Type)) +
+  geom_point() +
+  labs(x = "Hg Concentration (µg/g ww)", y = "Family")
+
+# Cleavland dotplot of natural-log transformed data, no apparent outliers anymore
+ggplot(HgSamples, aes(x = lHgConcentration, y = Family, color = Tissue_Type)) +
+  geom_point() +
+  labs(x = "ln(Hg) Concentration (µg/g ww)", y = "Family")
+
+
+#--------------------- ANALYSIS + LINEAR MODELS --------------------------------
+library(ggpubr)
+library(MuMIn)
+library(lme4)
+library(usdm)
+library(lmerTest)
+
+# ALL TISSUES + ALL SAMPLES -----------------------------------------------
+
+fullmodel <- lmer(lHgConcentration ~ 
+                    
+                    # Hg toxicokinetics
+                    Tissue_Type +
+                    
+                    # functional traits
+                    Trophic_Niche + HAB1 + STATUS +
+                    
+                    # landscape traits
+                    Mining_Present_Yes_No +
+                    
+                    # random effects
+                    (1 | Site_Name) + (1 | Species_Common_Name) + (1 | Date),
+                  
+                  data = HgSamples, REML = F)
+
+summary(fullmodel)
+r.squaredGLMM(fullmodel)
+anova(fullmodel)
+rand(fullmodel)
+
+# CHECKING MODEL ASSUMPTIONS -------------------------------------
+# Checking for homogeneity of variance & normality of residuals
+mean(residuals(fullmodel)) # very very close to 0
+
+library(ggResidpanel)
+resid_panel(fullmodel, plots = "all", type = NA, bins = 30,
+            smoother = T, qqline = T, qqbands = T, scale = 1,
+            theme = "bw", axis.text.size = 10, title.text.size = 12,
+            title.opt = TRUE, nrow = NULL)
+shapiro.test(residuals(fullmodel)) # not normal
+# residual plots look okay
+# normality plot has a few tail stragglers, but the rest looks good
+
+# Checking for normality of random effects
+ggqqplot(ranef(fullmodel)$Site_Name[,1]) # few tail stragglers, but the rest looks okay
+shapiro.test(ranef(fullmodel)$Site_Name[,1]) # we are normal
+
+# tails stray from normal
+ggqqplot(ranef(fullmodel)$Species_Common_Name[,1])
+shapiro.test(ranef(fullmodel)$Species_Common_Name[,1]) # we are not normal
+
+# tails stray from normal
+ggqqplot(ranef(fullmodel)$Date[,1])
+shapiro.test(ranef(fullmodel)$Date[,1]) # we are not normal
+
+# Checking for autocorrelation/independence
+library(lawstat)
+acf(HgSamples$HgConcentration) # raw data is autocorrelated
+acf(residuals(fullmodel)) # random effects variable corrects for this
+runs.test(residuals(fullmodel)) # we do not have autocorrelated data
+
+
+# CANDIDATE MODEL SET -----------------------------------------------
+library(AICcmodavg)
+library(lmerTest)
+
+fullmodel <- lmer(lHgConcentration ~ 
+                    
+                    # Hg toxicokinetics
+                    Tissue_Type +
+                    
+                    # functional traits
+                    Trophic_Niche + HAB1 + STATUS +
+                    
+                    # landscape traits
+                    Mining_Present_Yes_No +
+                    
+                    # random effects
+                    (1 | Site_Name) + (1 | Species_Common_Name) + (1 | Date),
+                  
+                  data = HgSamples, REML = F)
+
+summary(fullmodel)
+r.squaredGLMM(fullmodel)
+anova(fullmodel)
+rand(fullmodel)
+
+options(na.action = "na.fail")
+d.out <- dredge(fullmodel)
+View(d.out)
+options(na.action = "na.omit")
+
+#subset(d.out, delta < 2)
+#subset(d.out, cumsum(d.out$weight) <= .95)
+#
+## Model averaging for entire model set
+#modelavg <- model.avg(d.out)
+#summary(modelavg)
+#
+#confint(modelavg) # unconditional 95% CI
+#MuMIn::importance(modelavg)
+
+
+# 1st place model by a long-shot
+topmodel <- lmer(lHgConcentration ~ Trophic_Niche + Tissue_Type + 
+                 Mining_Present_Yes_No + (1 | SiteID) + (1 | Species_Common_Name)
+                 + (1 | Date), data = HgSamples, REML = F)
+
+summary(topmodel)
+r.squaredGLMM(topmodel)
+anova(topmodel)
+rand(topmodel)
+
+# 2nd place model
+topmodel <- lmer(lHgConcentration ~ Trophic_Niche + Tissue_Type + 
+                   Mining_Present_Yes_No + STATUS + (1 | SiteID) + (1 | Species_Common_Name)
+                 + (1 | Date), data = HgSamples, REML = F)
+
+summary(topmodel)
+r.squaredGLMM(topmodel)
