@@ -10,7 +10,7 @@ El monitoreo de la contaminación antropogénica de mercurio (Hg) en la vida sil
 
 ### Author's Note/Instructions:
 
-Hello! And welcome to this open access repository for Sayers et al. (2022), submitted to Science of the Total Environment. Here you will find all of the materials necessary to reproduce the results published in the manuscript. Sayers_Main_Script.R contains all of the data transformation computations, as well as the computations in order to produce the final linear mixed model. Sayers_Graphs.R contains all of the code necessary to produce the published figures.
+Hello! And welcome to this open access repository for Sayers et al. (2022), submitted to Science of the Total Environment. Here you will find all of the materials necessary to reproduce the results published in the manuscript. Sayers_Main_Script.R contains all of the data transformation computations, as well as the computations to produce the linear mixed model set. Sayers_Graphs.R contains all of the code necessary to produce the published figures.
 
 If you have any issues, general questions, or would like to collaborate with the Tropical Research for Avian Conservation and Ecotoxicology (TRACE) Initiative, please feel free to email me at chris.sayers@briwildlife.org or visit us at https://briwildlife.org/trace/. Enjoy!
 
