@@ -7,97 +7,347 @@ library(reshape2)
 library(data.table)
 library(RColorBrewer)
 
-# defining statistical functions for graphs
-gmean <- function(x, na.rm = TRUE){
-  exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
-}
-
-se <- function(x, na.rm = TRUE){
-  sd(x)/sqrt(length(x))
-}
+library(lmerTest)
+library(ggeffects)
+library(multcomp)
 
 # resolve namespace conflicts and creating necessary functions
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-# creating a filtered data set that excludes taxa that were poorly sampled
-# and/or aren't associated with terrestrial or freshwater systems
-# (ie. large marine piscivores)
-# This only excludes 9 birds
-GraphingData <- CollectiveData
-#filter(Order %nin% c("Anseriformes", "Accipitriformes", "Falconiformes", "Strigiformes", "Suliformes"),
-#       Family %nin% c("Laridae (Gulls, Terns, and Skimmers)"))
+# 1st place model from model selection
+topmodel <- lmer(log(Hg_Concentration) ~ Trophic_Niche + Tissue_Type + Mining_Present_Yes_No +
+                   (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
+                 data = HgSamples, REML = F)
 
-# my custom color-blind friendly palette that has a bit more pop than some of the stock options
-# change order as necessary, but these color selections should have enough contrast
-# red, blue, green, orange, pink, gray, yellow, purple, brown, black
-mypal <- c("red3", "#0072B2", "forestgreen", "orange2", "orchid3","gray60",
-           "gold1", "mediumpurple3", "chocolate4", "black")
 
-# Brewer color-blind friendly palette
-display.brewer.pal(n = 9, name = "Set1")
+# computing post-hoc comparisons to determine significant differences among the modeled means
+post.hoc <- glht(topmodel, linfct = mcp(Mining_Present_Yes_No = 'Tukey'))
+summary(post.hoc)
 
-# Hexadecimal color specification 
-# red, blue, green, purple, orange, yellow, brown, pink, gray, black
-pal <- brewer.pal(n = 9, name = "Set1")
-pal[10] <- "black"
-pal
+
+# PREDICTED TROPHIC NICHE -----------------------------------------------------------
+
+# calculating tissue sample sizes for y axis
+ss <- HgSamples %>%
+  group_by(Trophic_Niche, Tissue_Type) %>%
+  summarize(n = n()) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = n, values_fill = 0) %>%
+  select(Trophic_Niche, n_Blood = Blood_Hg_ppm, n_Body = Body_Hg_ppm, n_Tail = Tail_Hg_ppm) %>% 
+  mutate(Trophic_Niche.s = str_c(Trophic_Niche, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"),
+         n_Total = sum(n_Blood, n_Body, n_Tail))
+
+# calculating predicted Hg values with top model structure
+# type = "random" gives prediction intervals rather than confidence intervals
+pr <- ggpredict(topmodel, terms = c("Trophic_Niche", "Tissue_Type", "Mining_Present_Yes_No"),
+                type = "random") %>% 
+  mutate(Trophic_Niche = x) %>%
+  left_join(ss, by = "Trophic_Niche") %>%
+  # this function is critical to order the facets properly
+  transform(group = factor(group, levels = c("Blood_Hg_ppm", "Body_Hg_ppm", "Tail_Hg_ppm"),
+                           labels = c("Whole blood", "Body feather", "Tail feather"))) %>% 
+  transform(facet = factor(facet, levels = c("No", "Yes"), labels = c("ASGM absent", "ASGM present")))
+
+# columns
+ggplot(pr, mapping = aes(x = predicted, y = reorder(Trophic_Niche.s, predicted),
+                         fill = group, alpha = facet)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+                position = position_dodge(0.9), width = 0.15) +
+  labs(x = "Predicted THg (µg/g)", y = "Trophic niche") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+  theme_minimal() +
+  facet_grid(~ group, scales = "free") +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        legend.title = element_blank(),
+        legend.position = "right",
+        strip.background = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"))
+
+ggsave("Graphs/Predicted_Trophic_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Predicted_Trophic_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+
+## points
+#ggplot(pr, mapping = aes(x = predicted, y = reorder(Trophic_Niche.s, predicted),
+#                         color = group, alpha = facet)) +
+#  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+#                position = position_dodge(0.5), width = 0) +
+#  geom_point(position = position_dodge(0.5), size = 3) +
+#  #geom_pointrange(aes(xmin = conf.low, xmax = conf.high), position = position_dodge(0.9)) +
+#  labs(x = "Predicted THg (µg/g)", y = "Trophic niche") +
+#  scale_x_continuous(expand = c(0.1, 0)) +
+#  scale_color_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+#  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+#  theme_minimal() +
+#  facet_grid(~ group, scales = "free") +
+#  theme(axis.title.x = element_text(face = "bold"),
+#        axis.title.y = element_text(face = "bold"),
+#        legend.title = element_blank(),
+#        legend.position = "right",
+#        strip.background = element_blank(),
+#        strip.text.x = element_text(face = "bold"),
+#        strip.text.y = element_text(face = "bold"),
+#        panel.spacing = unit(1.5, "lines"))
+
+
+# PREDICTED FAMILY -----------------------------------------------------------------
+
+# calculating tissue sample sizes for y axis
+ss <- HgSamples %>%
+  group_by(Family, Tissue_Type) %>%
+  summarize(n = n()) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = n, values_fill = 0) %>%
+  select(Family, n_Blood = Blood_Hg_ppm, n_Body = Body_Hg_ppm, n_Tail = Tail_Hg_ppm) %>% 
+  mutate(Family.s = str_c(Family, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"),
+         n_Total = sum(n_Blood, n_Body, n_Tail))
+
+# calculating predicted Hg values with top model structure
+# type = "random" gives prediction intervals rather than confidence intervals
+pr <- ggpredict(topmodel, terms = c("Family", "Tissue_Type", "Mining_Present_Yes_No"),
+                type = "random") %>%
+  mutate(Family = x) %>%
+  left_join(ss, by = "Family") %>%
+  # this function is critical to order the facets properly
+  transform(group = factor(group, levels = c("Blood_Hg_ppm", "Body_Hg_ppm", "Tail_Hg_ppm"),
+                           labels = c("Whole blood", "Body feather", "Tail feather"))) %>% 
+  transform(facet = factor(facet, levels = c("No", "Yes"), labels = c("ASGM absent", "ASGM present"))) %>% 
+  filter(n_Total > 9)
+
+# columns
+ggplot(pr, mapping = aes(x = predicted, y = reorder(Family.s, predicted),
+                         fill = group, alpha = facet)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+                position = position_dodge(0.9), width = 0.15) +
+  labs(x = "Predicted THg (µg/g)", y = "Family (n ≥ 10)") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+  theme_minimal() +
+  facet_grid(~ group, scales = "free") +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        legend.title = element_blank(),
+        legend.position = "right",
+        strip.background = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"))
+
+ggsave("Graphs/Predicted_Family_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Predicted_Family_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+
+## points
+#ggplot(pr, mapping = aes(x = predicted, y = reorder(Family.s, predicted),
+#                         color = group, alpha = facet)) +
+#  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+#                position = position_dodge(0.9), width = 0) +
+#  geom_point(position = position_dodge(0.9), size = 3) +
+#  #geom_pointrange(aes(xmin = conf.low, xmax = conf.high), position = position_dodge(1)) +
+#  labs(x = "Predicted THg (µg/g)", y = "Family (n ≥ 10)") +
+#  scale_x_continuous(expand = c(0.1, 0)) +
+#  scale_color_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+#  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+#  theme_minimal() +
+#  facet_grid(~ group, scales = "free") +
+#  theme(axis.title.x = element_text(face = "bold"),
+#        axis.title.y = element_text(face = "bold"),
+#        legend.title = element_blank(),
+#        legend.position = "right",
+#        strip.background = element_blank(),
+#        strip.text.x = element_text(face = "bold"),
+#        strip.text.y = element_text(face = "bold"),
+#        panel.spacing = unit(1.5, "lines"))
+
+
+# PREDICTED SITE --------------------------------------------------------------------
+
+# calculating tissue sample sizes for y axis
+ss <- HgSamples %>%
+  mutate(Site_Name = if_else(Site_Name == "El Portal", str_c("El Yunque National Forest", "--", Site_Name), Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Río Icacos", str_c("El Yunque National Forest", "--", Site_Name), Site_Name)) %>% 
+  mutate(Site_Name = if_else(Site_Name == "Torre Britton", str_c("El Yunque National Forest", "--", Site_Name), Site_Name)) %>%
+  mutate(Site_Name = str_c(Site_Name, ", ", Country)) %>%
+  group_by(SiteID, Site_Name, Tissue_Type) %>%
+  summarize(n = n()) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = n, values_fill = 0) %>%
+  select(SiteID, Site_Name, n_Blood = Blood_Hg_ppm, n_Body = Body_Hg_ppm, n_Tail = Tail_Hg_ppm) %>% 
+  mutate(Site_Name.s = str_c(Site_Name, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"),
+         n_Total = sum(n_Blood, n_Body, n_Tail))
+
+# calculating predicted Hg values with top model structure
+# type = "random" gives prediction intervals rather than confidence intervals
+pr <- ggpredict(topmodel, terms = c("SiteID", "Tissue_Type", "Mining_Present_Yes_No"),
+                type = "random", back.transform = T) %>% 
+  mutate(SiteID = x) %>%
+  left_join(ss, by = "SiteID") %>%
+  # this function is critical to order the facets properly
+  transform(group = factor(group, levels = c("Blood_Hg_ppm", "Body_Hg_ppm", "Tail_Hg_ppm"),
+                           labels = c("Whole blood", "Body feather", "Tail feather"))) %>% 
+  transform(facet = factor(facet, levels = c("No", "Yes"), labels = c("ASGM absent", "ASGM present"))) %>% 
+  filter(n_Total > 24)
+
+# columns
+ggplot(pr, mapping = aes(x = predicted, y = reorder(Site_Name.s, predicted),
+                         fill = group, alpha = facet)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+                position = position_dodge(0.9), width = 0.15) +
+  labs(x = "Predicted THg (µg/g)", y = "Site (n ≥ 25)") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+  theme_minimal() +
+  facet_grid(~ group, scales = "free") +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        legend.title = element_blank(),
+        legend.position = "right",
+        strip.background = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"))
+
+ggsave("Graphs/Predicted_Site_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Predicted_Site_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+
+## points
+#ggplot(pr, mapping = aes(x = predicted, y = reorder(Site_Name.s, predicted),
+#                         color = group, alpha = facet)) +
+#  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+#                position = position_dodge(0.9), width = 0) +
+#  geom_point(position = position_dodge(0.9), size = 3) +
+#  #geom_pointrange(aes(xmin = conf.low, xmax = conf.high), position = position_dodge(1)) +
+#  labs(x = "Predicted THg (µg/g)", y = "Site Name (n ≥ 25)") +
+#  scale_x_continuous(expand = c(0.1, 0)) +
+#  scale_color_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+#  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+#  theme_minimal() +
+#  facet_grid(~ group, scales = "free") +
+#  theme(axis.title.x = element_text(face = "bold"),
+#        axis.title.y = element_text(face = "bold"),
+#        legend.title = element_blank(),
+#        legend.position = "right",
+#        strip.background = element_blank(),
+#        strip.text.x = element_text(face = "bold"),
+#        strip.text.y = element_text(face = "bold"),
+#        panel.spacing = unit(1.5, "lines"))
+
+
+# PREDICTED SPECIES -----------------------------------------------------------------
+
+## calculating tissue sample sizes for y axis
+#ss <- HgSamples %>%
+#  group_by(Species_Common_Name, Tissue_Type) %>%
+#  summarize(n = n()) %>%
+#  pivot_wider(names_from = Tissue_Type, values_from = n, values_fill = 0) %>%
+#  select(Species_Common_Name, n_Blood = Blood_Hg_ppm, n_Body = Body_Hg_ppm, n_Tail = Tail_Hg_ppm) %>% 
+#  mutate(Species_Common_Name.s = str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"),
+#         n_Total = sum(n_Blood, n_Body, n_Tail))
+#
+## calculating predicted Hg values with top model structure
+## type = "random" gives prediction intervals rather than confidence intervals
+#pr <- ggpredict(topmodel, terms = c("Species_Common_Name", "Tissue_Type", "Mining_Present_Yes_No"),
+#                type = "random") %>% 
+#  mutate(Species_Common_Name = x) %>%
+#  left_join(ss, by = "Species_Common_Name") %>%
+#  # this function is critical to order the facets properly
+#  transform(group = factor(group, levels = c("Blood_Hg_ppm", "Body_Hg_ppm", "Tail_Hg_ppm"),
+#                           labels = c("Whole blood", "Body feather", "Tail feather"))) %>% 
+#  transform(facet = factor(facet, levels = c("No", "Yes"), labels = c("ASGM absent", "ASGM present"))) %>%
+#  group_by(Species_Common_Name) %>% 
+#  #mutate(max_p = max(predicted)) %>% 
+#  #filter(max_p > 20) %>% 
+#  filter(n_Total > 9)
+#
+## points
+#ggplot(pr, mapping = aes(x = predicted, y = reorder(Species_Common_Name.s, predicted),
+#                         color = group, alpha = facet)) +
+#  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+#                position = position_dodge(0.9), width = 0) +
+#  geom_point(position = position_dodge(0.9), size = 3) +
+#  #geom_pointrange(aes(xmin = conf.low, xmax = conf.high), position = position_dodge(1)) +
+#  labs(x = "Predicted THg (µg/g)", y = "Species (n ≥ 10)") +
+#  scale_x_continuous(expand = c(0.1, 0)) +
+#  scale_color_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8"), guide = "none") +
+#  scale_alpha_discrete(range = c(1, 0.5), limits = c("ASGM present", "ASGM absent")) +
+#  theme_minimal() +
+#  facet_grid(~ group, scales = "free") +
+#  theme(axis.title.x = element_text(face = "bold"),
+#        axis.title.y = element_text(face = "bold"),
+#        legend.title = element_blank(),
+#        legend.position = "right",
+#        strip.background = element_blank(),
+#        strip.text.x = element_text(face = "bold"),
+#        strip.text.y = element_text(face = "bold"),
+#        panel.spacing = unit(1.5, "lines"))
+#
+## columns
+#ggplot(pr, mapping = aes(x = predicted, y = reorder(Species_Common_Name.s, predicted), fill = group)) +
+#  geom_errorbar(aes(xmin = conf.low, xmax = conf.high),
+#                position = position_dodge(0.9), width = 0.15) +
+#  geom_col(position = "dodge") +
+#  labs(x = "Predicted THg (µg/g)", y = "Species") +
+#  scale_x_continuous(expand = c(0, 0)) +
+#  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
+#  theme_minimal() +
+#  facet_grid(facet ~ group, scales = "free") +
+#  theme(axis.title.x = element_text(face = "bold"),
+#        axis.title.y = element_text(face = "bold"),
+#        legend.title = element_blank(),
+#        legend.position = "none",
+#        strip.background = element_blank(),
+#        strip.text.x = element_text(face = "bold"),
+#        strip.text.y = element_text(face = "bold"),
+#        panel.spacing = unit(1.5, "lines"))
 
 # ORDER VARIATION ---------------------------------------------------------
 
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+# calculating tissue sample sizes for y axis
+df <- CollectiveData %>% 
+  # adding tissue type as a data field 
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>%
   filter(!is.na(Order), !is.na(Concentration)) %>%
   group_by(Order, Tissue_Type) %>%
-  summarize(n = n(), gmean = gmean(Concentration), se = se(Concentration)) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Order ~ Tissue_Type, value.var = c("n", "gmean", "se"), fill = NA) %>%
-  select(Order, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         gmean_Blood = gmean_Blood_Hg_ppm, gmean_Contour = gmean_Contour_Hg_ppm, gmean_Tail = gmean_Tail_Hg_ppm,
-         se_Blood = se_Blood_Hg_ppm, se_Contour = se_Contour_Hg_ppm, se_Tail = se_Tail_Hg_ppm) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(Order = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                         str_c(Order, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                         if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                 str_c(Order, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                 if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                         str_c(Order, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                         if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                 str_c(Order, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                 if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                         str_c(Order, " (n = ", n_Blood,")"),
-                                                         if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                 str_c(Order, " (n = ", n_Contour,")"),
-                                                                 if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                         str_c(Order, " (n = ", n_Tail,")"),
-                                                                         Order))))))))
+  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration)) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = c(n, mean, sd), values_fill = list(n = 0, mean = NA, sd = NA)) %>%
+  select(Order, n_Blood = n_Blood_Hg_ppm, n_Body = n_Body_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
+         mean_Blood = mean_Blood_Hg_ppm, mean_Body = mean_Body_Hg_ppm, mean_Tail = mean_Tail_Hg_ppm,
+         sd_Blood = sd_Blood_Hg_ppm, sd_Body = sd_Body_Hg_ppm, sd_Tail = sd_Tail_Hg_ppm) %>% 
+  mutate(Order = str_c(Order, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"))
 
 p1 <- df %>%
-  select(Order, gmean = gmean_Blood, se = se_Blood) %>%
+  select(Order, mean = mean_Blood, sd = sd_Blood, n_Blood = n_Blood) %>%
   mutate(Tissue_Type = "Whole blood")
 p2 <- df %>%
-  select(Order, gmean = gmean_Contour, se = se_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
+  select(Order, mean = mean_Body, sd = sd_Body, n_Body = n_Body) %>%
+  mutate(Tissue_Type = "Body feather")
 p3 <- df %>%
-  select(Order, gmean = gmean_Tail, se = se_Tail) %>%
+  select(Order, mean = mean_Tail, sd = sd_Tail, n_Tail = n_Tail) %>%
   mutate(Tissue_Type = "Tail feather")
 
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(gmean)) %>%
+final <- rbind(p1, p2, p3) %>%
+  filter(!is.na(mean)) %>%
+  group_by(Order) %>% 
+  mutate(sum = sum(n_Blood, n_Body, n_Tail, na.rm = T)) %>% 
   # creating a system to better rank the y axis
   group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(gmean))/length(gmean)) %>%
+  mutate(percentile = percent_rank(mean)) %>% 
   group_by(Order) %>%
   mutate(max_percentile = max(percentile)) %>%
   # this function is critical to order the facets properly
   transform(Tissue_Type = factor(Tissue_Type,
-                               levels = c("Whole blood", "Contour feather", "Tail feather")))
-
-ggplot(final, mapping = aes(x = gmean, y = reorder(Order, max_percentile), fill = Tissue_Type)) +
-  geom_errorbar(aes(xmin = 0, xmax = gmean + se),
-                position = position_dodge(0.9), width = 0.2) +
+                                 levels = c("Whole blood", "Body feather", "Tail feather")))
+  
+ggplot(final, mapping = aes(x = mean, y = reorder(Order, max_percentile), fill = Tissue_Type)) +
+  geom_errorbar(aes(xmin = 0, xmax = mean + sd),
+                position = position_dodge(0.9), width = 0.15) +
   geom_col(position = "dodge") +
   labs(x = "THg (µg/g)", y = "Order") +
   scale_x_continuous(expand = c(0,0)) +
@@ -112,68 +362,53 @@ ggplot(final, mapping = aes(x = gmean, y = reorder(Order, max_percentile), fill 
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Order_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Order_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Order_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # FAMILY VARIATION --------------------------------------------------------
 
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+# calculating tissue sample sizes for y axis
+df <- CollectiveData %>% 
+  # adding tissue type as a data field 
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>%
   filter(!is.na(Family), !is.na(Concentration)) %>%
   group_by(Family, Tissue_Type) %>%
-  summarize(n = n(), gmean = gmean(Concentration), se = se(Concentration)) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Family ~ Tissue_Type, value.var = c("n", "gmean", "se"), fill = NA) %>%
-  select(Family, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         gmean_Blood = gmean_Blood_Hg_ppm, gmean_Contour = gmean_Contour_Hg_ppm, gmean_Tail = gmean_Tail_Hg_ppm,
-         se_Blood = se_Blood_Hg_ppm, se_Contour = se_Contour_Hg_ppm, se_Tail = se_Tail_Hg_ppm,) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(Family = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                          str_c(Family, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                          if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                  str_c(Family, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                  if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                          str_c(Family, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                          if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                  str_c(Family, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                  if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                          str_c(Family, " (n = ", n_Blood,")"),
-                                                          if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                  str_c(Family, " (n = ", n_Contour,")"),
-                                                                  if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                          str_c(Family, " (n = ", n_Tail,")"),
-                                                                          Family))))))))
-
+  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration)) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = c(n, mean, sd), values_fill = list(n = 0, mean = NA, sd = NA)) %>%
+  select(Family, n_Blood = n_Blood_Hg_ppm, n_Body = n_Body_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
+         mean_Blood = mean_Blood_Hg_ppm, mean_Body = mean_Body_Hg_ppm, mean_Tail = mean_Tail_Hg_ppm,
+         sd_Blood = sd_Blood_Hg_ppm, sd_Body = sd_Body_Hg_ppm, sd_Tail = sd_Tail_Hg_ppm) %>% 
+  mutate(Family = str_c(Family, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"))
+  
 p1 <- df %>%
-  select(Family, gmean = gmean_Blood, se = se_Blood, n_Blood = n_Blood) %>%
+  select(Family, mean = mean_Blood, sd = sd_Blood, n_Blood = n_Blood) %>%
   mutate(Tissue_Type = "Whole blood")
 p2 <- df %>%
-  select(Family, gmean = gmean_Contour, se = se_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
+  select(Family, mean = mean_Body, sd = sd_Body, n_Body = n_Body) %>%
+  mutate(Tissue_Type = "Body feather")
 p3 <- df %>%
-  select(Family, gmean = gmean_Tail, se = se_Tail, n_Tail = n_Tail) %>%
+  select(Family, mean = mean_Tail, sd = sd_Tail, n_Tail = n_Tail) %>%
   mutate(Tissue_Type = "Tail feather")
 
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(gmean)) %>%
-  # filtering by sample size so that the names fit on the axis
+final <- rbind(p1, p2, p3) %>%
+  filter(!is.na(mean)) %>%
   group_by(Family) %>% 
-  mutate(sum = sum(n_Blood, n_Contour, n_Tail, na.rm = T)) %>%
+  mutate(sum = sum(n_Blood, n_Body, n_Tail, na.rm = T)) %>% 
   filter(sum > 9) %>%
   # creating a system to better rank the y axis
   group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(gmean))/length(gmean)) %>%
+  mutate(percentile = percent_rank(mean)) %>% 
   group_by(Family) %>%
   mutate(max_percentile = max(percentile)) %>%
   # this function is critical to order the facets properly
   transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
+                                 levels = c("Whole blood", "Body feather", "Tail feather")))
 
-ggplot(final, mapping = aes(x = gmean, y = reorder(Family, max_percentile), fill = Tissue_Type)) +
-  geom_errorbar(aes(xmin = 0, xmax = gmean + se),
-                position = position_dodge(0.9), width = 0.2) +
+ggplot(final, mapping = aes(x = mean, y = reorder(Family, max_percentile), fill = Tissue_Type)) +
+  geom_errorbar(aes(xmin = 0.5*mean, xmax = mean + sd),
+                position = position_dodge(0.9), width = 0.15) +
   geom_col(position = "dodge") +
   labs(x = "THg (µg/g)", y = "Family (n ≥ 10)") +
   scale_x_continuous(expand = c(0,0)) +
@@ -188,71 +423,56 @@ ggplot(final, mapping = aes(x = gmean, y = reorder(Family, max_percentile), fill
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Family_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Family_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Family_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # SPECIES VARIATION --------------------------------------------------------
 
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+# calculating tissue sample sizes for y axis
+df <- CollectiveData %>% 
+  # adding tissue type as a data field 
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>%
   filter(!is.na(Species_Common_Name), !is.na(Concentration)) %>%
   group_by(Species_Common_Name, Tissue_Type) %>%
-  summarize(n = n(), gmean = gmean(Concentration), se = se(Concentration)) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Species_Common_Name ~ Tissue_Type, value.var = c("n", "gmean", "se"), fill = NA) %>%
-  select(Species_Common_Name, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         gmean_Blood = gmean_Blood_Hg_ppm, gmean_Contour = gmean_Contour_Hg_ppm, gmean_Tail = gmean_Tail_Hg_ppm,
-         se_Blood = se_Blood_Hg_ppm, se_Contour = se_Contour_Hg_ppm, se_Tail = se_Tail_Hg_ppm,) %>% 
-  mutate(Species_Common_Name = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                       str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                                       if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                               str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                               if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                       str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                                       if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                               str_c(Species_Common_Name, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                               if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                                       str_c(Species_Common_Name, " (n = ", n_Blood,")"),
-                                                                       if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                               str_c(Species_Common_Name, " (n = ", n_Contour,")"),
-                                                                               if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                                       str_c(Species_Common_Name, " (n = ", n_Tail,")"),
-                                                                                       Species_Common_Name))))))))
-
+  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration)) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = c(n, mean, sd), values_fill = list(n = 0, mean = NA, sd = NA)) %>%
+  select(Species_Common_Name, n_Blood = n_Blood_Hg_ppm, n_Body = n_Body_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
+         mean_Blood = mean_Blood_Hg_ppm, mean_Body = mean_Body_Hg_ppm, mean_Tail = mean_Tail_Hg_ppm,
+         sd_Blood = sd_Blood_Hg_ppm, sd_Body = sd_Body_Hg_ppm, sd_Tail = sd_Tail_Hg_ppm) %>% 
+  mutate(Species_Common_Name = str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")")) 
+  
 p1 <- df %>%
-  select(Species_Common_Name, gmean = gmean_Blood, se = se_Blood, n_Blood = n_Blood) %>%
+  select(Species_Common_Name, mean = mean_Blood, sd = sd_Blood, n_Blood = n_Blood) %>%
   mutate(Tissue_Type = "Whole blood")
 p2 <- df %>%
-  select(Species_Common_Name, gmean = gmean_Contour, se = se_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
+  select(Species_Common_Name, mean = mean_Body, sd = sd_Body, n_Body = n_Body) %>%
+  mutate(Tissue_Type = "Body feather")
 p3 <- df %>%
-  select(Species_Common_Name, gmean = gmean_Tail, se = se_Tail, n_Tail = n_Tail) %>%
+  select(Species_Common_Name, mean = mean_Tail, sd = sd_Tail, n_Tail = n_Tail) %>%
   mutate(Tissue_Type = "Tail feather")
 
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(gmean)) %>%
-  # filtering by sample size so that the names fit on the axis
+final <- rbind(p1, p2, p3) %>%
+  filter(!is.na(mean)) %>%
+  view()
   group_by(Species_Common_Name) %>% 
-  mutate(sum = sum(n_Blood, n_Contour, n_Tail, na.rm = T)) %>%
+  mutate(sum = sum(n_Blood, n_Body, n_Tail, na.rm = T)) %>% 
   filter(sum > 9) %>%
   # creating a system to better rank the y axis
   group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(gmean))/length(gmean)) %>%
+  mutate(percentile = percent_rank(mean)) %>% 
   group_by(Species_Common_Name) %>%
   mutate(max_percentile = max(percentile)) %>%
-  #filter(max_percentile >= 0.50) %>% 
   # this function is critical to order the facets properly
   transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
-  
-ggplot(final, mapping = aes(x = gmean, y = reorder(Species_Common_Name, max_percentile),
-                            fill = Tissue_Type)) +
-  geom_errorbar(aes(xmin = 0, xmax = gmean + se),
-                position = position_dodge(0.9), width = 0.2) +
+                                 levels = c("Whole blood", "Body feather", "Tail feather")))
+
+ggplot(final, mapping = aes(x = mean, y = reorder(Species_Common_Name, max_percentile), fill = Tissue_Type)) +
+  geom_errorbar(aes(xmin = 0.5*mean, xmax = mean + sd),
+                position = position_dodge(0.9), width = 0.15) +
   geom_col(position = "dodge") +
-  labs(x = "THg (µg/g)", y = bquote("Species (n ≥ 10)")) +
+  labs(x = "THg (µg/g)", y = "Species (n ≥ 10)") +
   scale_x_continuous(expand = c(0,0)) +
   scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
   theme_minimal() +
@@ -265,69 +485,58 @@ ggplot(final, mapping = aes(x = gmean, y = reorder(Species_Common_Name, max_perc
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Species_AllTissues_Hist.jpg", dpi = 800, width = 8, height = 10)
+ggsave("Graphs/Sayers_Species_AllTissues_Hist.jpg", dpi = 1000, width = 8, height = 10)
+ggsave("Graphs/Sayers_Species_AllTissues_Hist.tiff", dpi = 1000, width = 8, height = 10)
 
 
 # TROPHIC NICHE x PRIMARY HABITAT ---------------------------------------------
 
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+# calculating tissue sample sizes for y axis
+df <- CollectiveData %>% 
+  # adding tissue type as a data field 
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>%
   filter(!is.na(Trophic_Niche), !is.na(HAB1), !is.na(Concentration)) %>%
-  pivot_longer(c(Trophic_Niche, HAB1),
-               names_to = "Category", values_to = "Type") %>%
+  pivot_longer(c(Trophic_Niche, HAB1), names_to = "Category", values_to = "Type") %>%
   group_by(Category, Type, Tissue_Type) %>%
-  summarize(n = n(), gmean = gmean(Concentration), se = se(Concentration)) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
+  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration)) %>%
   data.table() %>% 
-  data.table::dcast(Category + Type ~ Tissue_Type, value.var = c("n", "gmean", "se"), fill = NA) %>%
-  select(Category, Type, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         gmean_Blood = gmean_Blood_Hg_ppm, gmean_Contour = gmean_Contour_Hg_ppm, gmean_Tail = gmean_Tail_Hg_ppm,
-         se_Blood = se_Blood_Hg_ppm, se_Contour = se_Contour_Hg_ppm, se_Tail = se_Tail_Hg_ppm,) %>% 
-  mutate(Type = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                        str_c(Type, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                        if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                str_c(Type, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                        str_c(Type, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                        if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                str_c(Type, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                        str_c(Type, " (n = ", n_Blood,")"),
-                                                        if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                str_c(Type, " (n = ", n_Contour,")"),
-                                                                if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                        str_c(Type, " (n = ", n_Tail,")"),
-                                                                        Type)))))))) %>% 
+  data.table::dcast(Category + Type ~ Tissue_Type, value.var = c("n", "mean", "sd"),
+                    fill = list(n = 0, mean = NA, sd = NA)) %>%
+  select(Category, Type, n_Blood = n_Blood_Hg_ppm, n_Body = n_Body_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
+         mean_Blood = mean_Blood_Hg_ppm, mean_Body = mean_Body_Hg_ppm, mean_Tail = mean_Tail_Hg_ppm,
+         sd_Blood = sd_Blood_Hg_ppm, sd_Body = sd_Body_Hg_ppm, sd_Tail = sd_Tail_Hg_ppm) %>% 
+  mutate(Type = str_c(Type, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")")) %>% 
   # renaming category values for later plotting
   mutate(Category = if_else(Category == "Trophic_Niche", "Trophic niche", "Primary habitat"))
 
 p1 <- df %>%
-  select(Category, Type, gmean = gmean_Blood, se = se_Blood, n_Blood = n_Blood) %>%
+  select(Category, Type, mean = mean_Blood, sd = sd_Blood, n_Blood = n_Blood) %>%
   mutate(Tissue_Type = "Whole blood")
 p2 <- df %>%
-  select(Category, Type, gmean = gmean_Contour, se = se_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
+  select(Category, Type, mean = mean_Body, sd = sd_Body, n_Body = n_Body) %>%
+  mutate(Tissue_Type = "Body feather")
 p3 <- df %>%
-  select(Category, Type, gmean = gmean_Tail, se = se_Tail, n_Tail = n_Tail) %>%
+  select(Category, Type, mean = mean_Tail, sd = sd_Tail, n_Tail = n_Tail) %>%
   mutate(Tissue_Type = "Tail feather")
 
 final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(gmean)) %>%
+  filter(mean != 0) %>%
   # calculating percentile rank for each tissue
   group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(gmean))/length(gmean)) %>%
+  mutate(percentile = percent_rank(mean)) %>%
   group_by(Category, Type) %>% 
   mutate(max_percentile = max(percentile)) %>%
   # this function is critical to order the facets properly
   transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather"))) %>% 
+                                 levels = c("Whole blood", "Body feather", "Tail feather"))) %>% 
   transform(Category = factor(Category,
-                                 levels = c("Trophic niche", "Primary habitat")))
+                              levels = c("Trophic niche", "Primary habitat"))) %>% 
+  view()
 
-ggplot(final, mapping = aes(x = gmean, y = reorder(Type, max_percentile),
+ggplot(final, mapping = aes(x = mean, y = reorder(Type, max_percentile),
                             fill = Tissue_Type)) +
-  geom_errorbar(aes(xmin = 0, xmax = gmean + se),
+  geom_errorbar(aes(xmin = 0.5*mean, xmax = mean + sd),
                 position = position_dodge(0.9), width = 0.2) +
   geom_col(position = "dodge") +
   labs(x = "THg (µg/g)") +
@@ -345,13 +554,78 @@ ggplot(final, mapping = aes(x = gmean, y = reorder(Type, max_percentile),
         strip.placement = "outside",
         panel.spacing = unit(1, "lines"))
 
-ggsave("Graphs/Sayers_TrophicxHabitat_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_TrophicxHabitat_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_TrophicxHabitat_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+
+
+# SITE VARIATION ---------------------------------------------------------
+
+# calculating tissue sample sizes for y axis
+df <- CollectiveData %>% 
+  mutate(Site_Name = if_else(Site_Name == "El Portal", str_c("El Yunque National Forest", "--", Site_Name), Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Río Icacos", str_c("El Yunque National Forest", "--", Site_Name), Site_Name)) %>% 
+  mutate(Site_Name = if_else(Site_Name == "Torre Britton", str_c("El Yunque National Forest", "--", Site_Name), Site_Name)) %>%
+  mutate(Site_Name = str_c(Site_Name, ", ", Country)) %>%
+  # adding tissue type as a data field 
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>%
+  filter(!is.na(Site_Name), !is.na(Concentration)) %>%
+  group_by(Site_Name, Tissue_Type) %>%
+  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration)) %>%
+  pivot_wider(names_from = Tissue_Type, values_from = c(n, mean, sd), values_fill = list(n = 0, mean = NA, sd = NA)) %>%
+  select(Site_Name, n_Blood = n_Blood_Hg_ppm, n_Body = n_Body_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
+         mean_Blood = mean_Blood_Hg_ppm, mean_Body = mean_Body_Hg_ppm, mean_Tail = mean_Tail_Hg_ppm,
+         sd_Blood = sd_Blood_Hg_ppm, sd_Body = sd_Body_Hg_ppm, sd_Tail = sd_Tail_Hg_ppm) %>% 
+  mutate(Site_Name = str_c(Site_Name, " (n = ", n_Blood, ", ", n_Body, ", ", n_Tail, ")"),
+         n_Total = sum(n_Blood, n_Body, n_Tail, na.rm = T)) %>% 
+  filter(n_Total > 25)
+
+p1 <- df %>%
+  select(Site_Name, mean = mean_Blood, sd = sd_Blood, n_Blood = n_Blood) %>%
+  mutate(Tissue_Type = "Whole blood")
+p2 <- df %>%
+  select(Site_Name, mean = mean_Body, sd = sd_Body, n_Body = n_Body) %>%
+  mutate(Tissue_Type = "Body feather")
+p3 <- df %>%
+  select(Site_Name, mean = mean_Tail, sd = sd_Tail, n_Tail = n_Tail) %>%
+  mutate(Tissue_Type = "Tail feather")
+
+final <- rbind(p1, p2, p3) %>%
+  filter(!is.na(mean)) %>%
+  # creating a system to better rank the y axis
+  group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
+  mutate(percentile = percent_rank(mean)) %>% 
+  group_by(Site_Name) %>%
+  mutate(max_percentile = max(percentile)) %>%
+  # this function is critical to order the facets properly
+  transform(Tissue_Type = factor(Tissue_Type,
+                                 levels = c("Whole blood", "Body feather", "Tail feather"))) 
+
+ggplot(final, mapping = aes(x = mean, y = reorder(Site_Name, max_percentile), fill = Tissue_Type)) +
+  geom_errorbar(aes(xmin = 0.5*mean, xmax = mean + sd),
+                position = position_dodge(0.9), width = 0.15) +
+  geom_col(position = "dodge") +
+  labs(x = "THg (µg/g)", y = "Site (n ≥ 25)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
+  theme_minimal() +
+  facet_grid(~ Tissue_Type, scales = "free") +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        legend.title = element_blank(),
+        legend.position = "none",
+        strip.background = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"))
+
+ggsave("Graphs/Sayers_Site_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Site_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # RISK ASSESSMENT ---------------------------------------------------------
 
 # Risk graph for blood
-bloodrisk <- GraphingData %>%
+bloodrisk <- CollectiveData %>%
   filter(!is.na(Blood_Hg_ppm), !is.na(Species_Common_Name),
          Species_Code != "BIRD") %>%
   group_by(Species_Common_Name) %>%
@@ -377,23 +651,26 @@ bloodrisk <- GraphingData %>%
     reorder(reorder(reorder(Species_Common_Name, desc(Species_Common_Name)), Score), Prop_None),
     Prop_Low), Prop_Med), Prop_High), Prop_Ext), fill = Risk_Levels)) +
   geom_bar(position = "fill") +
-  scale_fill_manual(values = c("black", "red3", "darkorange", "gold", "lightskyblue")) +
+  scale_fill_manual(values = c("black", "red3", "darkorange", "gold", "lightgray")) +
   scale_x_continuous(labels = scales::percent, expand = c(0,0)) + 
   labs(x = "Proportion of individuals sampled", y = "Species (n ≥ 5)",
        fill = "Whole blood\nrisk categories") +
   theme_classic() +
   theme(axis.title.x = element_text(face = "bold"),
         axis.title.y = element_text(face = "bold"),
-        legend.title = element_text(face = "bold"))
+        legend.title = element_text(face = "bold"),
+        #legend.position = "none",
+        aspect.ratio = 1)
 
-ggsave("Graphs/Sayers_Risk_Blood.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Risk_Blood.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Risk_Blood.tiff", dpi = 1000, width = 10, height = 8)
 
-# Risk graph for contour feathers
-contourrisk <- GraphingData %>%
-  filter(!is.na(Species_Common_Name), !is.na(Contour_Hg_ppm), Species_Code != "BIRD") %>%
+# Risk graph for body feathers
+bodyrisk <- CollectiveData %>%
+  filter(!is.na(Species_Common_Name), !is.na(Body_Hg_ppm), Species_Code != "BIRD") %>%
   group_by(Species_Common_Name) %>%
   mutate(Species_Common_Name = str_c(Species_Common_Name, " (n = ", n(), ")"),
-         Risk_Levels = cut(Contour_Hg_ppm, breaks = c(0, 2.4, 3.4, 4.5, 5.3, Inf),
+         Risk_Levels = cut(Body_Hg_ppm, breaks = c(0, 2.4, 3.4, 4.5, 5.3, Inf),
                            labels = c("<2.4 µg/g fw", "≥2.4 µg/g fw", "≥3.4 µg/g fw", "≥4.5 µg/g fw", "≥5.3 µg/g fw")),
          # reordering risk categories
          Risk_Levels = factor(Risk_Levels, levels = c("≥5.3 µg/g fw", "≥4.5 µg/g fw",
@@ -415,20 +692,23 @@ contourrisk <- GraphingData %>%
     reorder(reorder(reorder(Species_Common_Name, desc(Species_Common_Name)), Score), Prop_None),
     Prop_Low), Prop_Med), Prop_High), Prop_Ext), fill = Risk_Levels)) +
   geom_bar(position = "fill") +
-  scale_fill_manual(values = c("black", "red3", "darkorange", "gold", "lightskyblue")) +
+  scale_fill_manual(values = c("black", "red3", "darkorange", "gold", "lightgray")) +
   scale_x_continuous(labels = scales::percent, expand = c(0,0)) + 
-  labs(x = "Proportion of individuals sampled", y = "Species (n ≥ 5)", fill = "Contour feather\nrisk categories") +
+  labs(x = "Proportion of individuals sampled", y = "Species (n ≥ 5)", fill = "Body feather\nrisk categories") +
   theme_classic() +
   theme(axis.title.x = element_text(face = "bold"),
         #axis.title.x = element_blank(),
+        #axis.title.y = element_blank(),
         axis.title.y = element_text(face = "bold"),
         legend.title = element_text(face = "bold"),
+        #legend.position = "none",
         aspect.ratio = 1)
 
-ggsave("Graphs/Sayers_Risk_Contour.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Risk_Body.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Risk_Body.tiff", dpi = 1000, width = 10, height = 8)
 
 # Risk graph for rectrices
-tailrisk <- GraphingData %>%
+tailrisk <- CollectiveData %>%
   filter(!is.na(Species_Common_Name), !is.na(Tail_Hg_ppm), Species_Code != "BIRD") %>%
   group_by(Species_Common_Name) %>%
   mutate(Species_Common_Name = str_c(Species_Common_Name, " (n = ", n(), ")"),
@@ -453,7 +733,7 @@ tailrisk <- GraphingData %>%
     reorder(reorder(reorder(Species_Common_Name, desc(Species_Common_Name)), Score), Prop_None),
     Prop_Low), Prop_Med), Prop_High), Prop_Ext), fill = Risk_Levels)) +
   geom_bar(position = "fill") +
-  scale_fill_manual(values = c("black", "red3", "darkorange", "gold", "lightskyblue")) +
+  scale_fill_manual(values = c("black", "red3", "darkorange", "gold", "lightgray")) +
   scale_x_continuous(labels = scales::percent, expand = c(0,0)) + 
   labs(x = "Proportion of individuals sampled", y = "Species (n ≥ 5)", fill = "Tail feather\nrisk categories") +
   theme_classic() +
@@ -461,16 +741,16 @@ tailrisk <- GraphingData %>%
         axis.title.y = element_text(face = "bold"),
         #axis.title.y = element_blank(),
         legend.title = element_text(face = "bold"),
+        #legend.position = "none",
         aspect.ratio = 1)
 
-ggsave("Graphs/Sayers_Risk_Tail.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Risk_Tail.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Risk_Tail.tiff", dpi = 1000, width = 10, height = 8)
 
 
-ggarrange(bloodrisk, contourrisk, tailrisk, labels = c("A)", "B)", "C)"), nrow = 2, ncol = 2)
-ggarrange(contourrisk, tailrisk, labels = c("A)", "B)"), nrow = 2, ncol = 1)
-ggsave("Graphs/Sayers_Facet_Risk_Feathers.jpg", dpi = 800, width = 10, height = 8)
-
-
+ggarrange(bloodrisk, bodyrisk, tailrisk, labels = c("a)", "b)", "c)"), nrow = 3, ncol = 1)
+ggsave("Graphs/Sayers_Facet_Risk_AllTissues.jpg", dpi = 1000, width = 10, height = 15)
+ggsave("Graphs/Sayers_Facet_Risk_AllTissues.tiff", dpi = 1000, width = 10, height = 15)
 
 
 # MAPS ------------------------------------------------------------------
@@ -480,10 +760,45 @@ library(raster)
 
 # Google satellite imagery as a background
 library(ggmap)
-register_google(key = "Insert your Google API key here", write = TRUE)
+register_google(key = "AIzaSyAhVAGnjiPZgt0KtXSO_Od2j67CF6wEmD8", write = TRUE) # Chris' personal key
+
+# Graphical abstract
+# All tissue map with points
+MapData <- CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>%
+  filter(!is.na(Concentration)) %>%
+  arrange(Concentration) %>% # this is so that the points will be plotted big -> small
+  # making sure all individuals can be plotted
+  mutate(Banding_Station_Lat = if_else(is.na(Banding_Station_Lat), Site_Lat, Banding_Station_Lat),
+         Banding_Station_Long = if_else(is.na(Banding_Station_Long), Site_Long, Banding_Station_Long))
+
+satellitemap <- get_map(location = c(lon = -83, lat = 5), maptype = "satellite", source = "google", zoom = 4)
+
+ggmap(satellitemap) +
+  geom_point(data = MapData, mapping = aes(x = Banding_Station_Long, y = Banding_Station_Lat,
+                                           color = log(Concentration), size = log(Concentration)),
+             position = position_jitter(width = 0.5, height = 0.5)) +
+  scale_color_gradient(high = "red", low = "yellow") +
+  scale_size(range = c(8,2)) + # setting the point size
+  labs(x = "Longitude", y = "Latitude", color = "ln[Bird Hg (µg/g)]") +
+  theme(#axis.title.x = element_text(face = "bold"),
+    #axis.title.y = element_text(face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold"),
+    aspect.ratio = 1) +
+    guides(size = "none") # removing size legend 
+
+ggsave("Graphs/Sayers_Satellite_Circle_AllTissue_GAbstract.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_AllTissue_GAbstract.tiff", dpi = 1000, width = 10, height = 8)
 
 # Blood map with points as circles
-MapData <- GraphingData %>%
+MapData <- CollectiveData %>%
   filter(!is.na(Blood_Hg_ppm)) %>% 
   arrange(Blood_Hg_ppm) %>% # this is so that the points will be plotted big -> small
   # making sure all individuals can be plotted
@@ -504,53 +819,55 @@ bloodmap <- ggmap(satellitemap) +
   labs(color = "Whole blood\nTHg (µg/g ww)") +
   theme_classic() +
   theme(#axis.title.x = element_text(face = "bold"),
-        #axis.title.y = element_text(face = "bold"),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.title = element_text(face = "bold"),
-        aspect.ratio = 1) +
-  guides(size = F) # removing size legend 
+    #axis.title.y = element_text(face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold"),
+    aspect.ratio = 1) +
+  guides(size = "none") # removing size legend 
 
-ggsave("Graphs/Sayers_Satellite_Circle_Blood_Map.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_Blood_Map.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_Blood_Map.tiff", dpi = 1000, width = 10, height = 8)
 
-# Contour feather map with points
-MapData <- GraphingData %>%
-  filter(!is.na(Contour_Hg_ppm)) %>% 
-  arrange(Contour_Hg_ppm) %>% # this is so that the points will be plotted big -> small
+# Body feather map with points
+MapData <- CollectiveData %>%
+  filter(!is.na(Body_Hg_ppm)) %>% 
+  arrange(Body_Hg_ppm) %>% # this is so that the points will be plotted big -> small
   # making sure all individuals can be plotted
   mutate(Banding_Station_Lat = if_else(is.na(Banding_Station_Lat), Site_Lat, Banding_Station_Lat),
          Banding_Station_Long = if_else(is.na(Banding_Station_Long), Site_Long, Banding_Station_Long))
 
 satellitemap <- get_map(location = c(lon = -83, lat = 5), maptype = "satellite", source = "google", zoom = 4)
 
-contourmap <- ggmap(satellitemap) +
+bodymap <- ggmap(satellitemap) +
   geom_point(data = MapData, mapping = aes(x = Banding_Station_Long, y = Banding_Station_Lat,
-                                           color = Contour_Hg_ppm, size = Contour_Hg_ppm)) +
+                                           color = Body_Hg_ppm, size = Body_Hg_ppm)) +
   scale_color_gradient(high = "red", low = "yellow") +
   scale_size(range = c(8,2)) + # setting the point size
-  labs(x = "Longitude", y = "Latitude", color = "Contour feather\nTHg (µg/g fw)") + 
+  labs(x = "Longitude", y = "Latitude", color = "Body feather\nTHg (µg/g fw)") + 
   #ggtitle("Resident species only") +
   theme_classic() +
   theme(#axis.title.x = element_text(face = "bold"),
-        #axis.title.y = element_text(face = "bold"),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.title = element_text(face = "bold"),
-        aspect.ratio = 1) +
-  guides(size = F) # removing size legend 
+    #axis.title.y = element_text(face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold"),
+    aspect.ratio = 1) +
+  guides(size = "none") # removing size legend 
 
-ggsave("Graphs/Sayers_Satellite_Circle_Contour_Map.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_Body_Map.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_Body_Map.tiff", dpi = 1000, width = 10, height = 8)
 
 # Rectrice map with points
-MapData <- GraphingData %>%
+MapData <- CollectiveData %>%
   filter(!is.na(Tail_Hg_ppm)) %>% 
   arrange(Tail_Hg_ppm) %>% # this is so that the points will be plotted big -> small
   # making sure all individuals can be plotted
@@ -568,362 +885,20 @@ tailmap <- ggmap(satellitemap) +
   #ggtitle("Resident species only") +
   theme_classic() +
   theme(#axis.title.x = element_text(face = "bold"),
-        #axis.title.y = element_text(face = "bold"),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.title = element_text(face = "bold"),
-        aspect.ratio = 1) +
-  guides(size = F) # removing size legend 
+    #axis.title.y = element_text(face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold"),
+    aspect.ratio = 1) +
+  guides(size = "none") # removing size legend
 
-ggsave("Graphs/Sayers_Satellite_Circle_Tail_Map.jpg", dpi = 800, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_Tail_Map.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("Graphs/Sayers_Satellite_Circle_Tail_Map.tiff", dpi = 1000, width = 10, height = 8)
 
-ggarrange(bloodmap, contourmap, tailmap, labels = c("A)", "B)", "C)"), nrow = 2, ncol = 2)
-ggsave("Graphs/Sayers_Facet_Map_AllTissues.jpg", dpi = 800, width = 15, height = 10)
-
-
-
-# COEFFICIENT OF VARIATION ---------------------------------------------------------
-
-# Order
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(Order), !is.na(Concentration)) %>%
-  group_by(Order, Tissue_Type) %>%
-  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration), cv = sd/mean) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Order ~ Tissue_Type, value.var = c("n", "cv"), fill = NA) %>%
-  select(Order, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         cv_Blood = cv_Blood_Hg_ppm, cv_Contour = cv_Contour_Hg_ppm, cv_Tail = cv_Tail_Hg_ppm) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(Order = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                         str_c(Order, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                         if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                 str_c(Order, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                 if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                         str_c(Order, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                         if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                 str_c(Order, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                 if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                         str_c(Order, " (n = ", n_Blood,")"),
-                                                         if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                 str_c(Order, " (n = ", n_Contour,")"),
-                                                                 if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                         str_c(Order, " (n = ", n_Tail,")"),
-                                                                         Order))))))))
-p1 <- df %>%
-  select(Order, cv = cv_Blood) %>%
-  mutate(Tissue_Type = "Whole blood")
-p2 <- df %>%
-  select(Order, cv = cv_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
-p3 <- df %>%
-  select(Order, cv = cv_Tail) %>%
-  mutate(Tissue_Type = "Tail feather")
-
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(cv)) %>%
-  # creating a system to better rank the y axis
-  group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(cv))/length(cv)) %>%
-  group_by(Order) %>%
-  mutate(max_percentile = max(percentile)) %>%
-  # this function is critical to order the facets properly
-  transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
-
-ggplot(final, mapping = aes(x = cv, y = reorder(Order, max_percentile), fill = Tissue_Type)) +
-  geom_col() +
-  labs(x = "Coefficient of THg variation", y = "Order") +
-  scale_x_continuous(labels = scales::percent, expand = c(0,0)) +
-  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
-  theme_minimal() +
-  facet_grid(~ Tissue_Type, scales = "free") +
-  theme(axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold"),
-        legend.title = element_blank(),
-        legend.position = "none",
-        strip.background = element_blank(),
-        strip.text.x = element_text(face = "bold"),
-        panel.spacing = unit(1.5, "lines"))
-
-ggsave("Graphs/Sayers_Order_CV_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
-
-
-# Family
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(Family), !is.na(Concentration)) %>%
-  group_by(Family, Tissue_Type) %>%
-  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration), cv = sd/mean) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Family ~ Tissue_Type, value.var = c("n", "cv"), fill = NA) %>%
-  select(Family, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         cv_Blood = cv_Blood_Hg_ppm, cv_Contour = cv_Contour_Hg_ppm, cv_Tail = cv_Tail_Hg_ppm) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(Family = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                         str_c(Family, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                         if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                 str_c(Family, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                 if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                         str_c(Family, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                         if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                 str_c(Family, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                 if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                         str_c(Family, " (n = ", n_Blood,")"),
-                                                         if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                 str_c(Family, " (n = ", n_Contour,")"),
-                                                                 if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                         str_c(Family, " (n = ", n_Tail,")"),
-                                                                         Family))))))))
-p1 <- df %>%
-  select(Family, cv = cv_Blood, n_Blood = n_Blood) %>%
-  mutate(Tissue_Type = "Whole blood")
-p2 <- df %>%
-  select(Family, cv = cv_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
-p3 <- df %>%
-  select(Family, cv = cv_Tail, n_Tail = n_Tail) %>%
-  mutate(Tissue_Type = "Tail feather")
-
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(cv)) %>%
-  # filtering by sample size so that the names fit on the axis
-  group_by(Family) %>% 
-  mutate(sum = sum(n_Blood, n_Contour, n_Tail, na.rm = T)) %>%
-  filter(sum > 9) %>%
-  # creating a system to better rank the y axis
-  group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(cv))/length(cv)) %>%
-  group_by(Family) %>%
-  mutate(max_percentile = max(percentile)) %>%
-  # this function is critical to order the facets properly
-  transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
-
-ggplot(final, mapping = aes(x = cv, y = reorder(Family, max_percentile), fill = Tissue_Type)) +
-  geom_col() +
-  labs(x = "Coefficient of THg variation", y = "Family (n ≥ 10)") +
-  scale_x_continuous(labels = scales::percent, expand = c(0,0)) +
-  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
-  theme_minimal() +
-  facet_grid(~ Tissue_Type, scales = "free") +
-  theme(axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold"),
-        legend.title = element_blank(),
-        legend.position = "none",
-        strip.background = element_blank(),
-        strip.text.x = element_text(face = "bold"),
-        panel.spacing = unit(1.5, "lines"))
-
-ggsave("Graphs/Sayers_Family_CV_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
-
-# Species
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(Species_Common_Name), !is.na(Concentration)) %>%
-  group_by(Species_Common_Name, Tissue_Type) %>%
-  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration), cv = sd/mean) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Species_Common_Name ~ Tissue_Type, value.var = c("n", "cv"), fill = NA) %>%
-  select(Species_Common_Name, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         cv_Blood = cv_Blood_Hg_ppm, cv_Contour = cv_Contour_Hg_ppm, cv_Tail = cv_Tail_Hg_ppm) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(Species_Common_Name = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                          str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                          if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                  str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                  if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                          str_c(Species_Common_Name, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                          if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                  str_c(Species_Common_Name, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                  if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                          str_c(Species_Common_Name, " (n = ", n_Blood,")"),
-                                                          if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                  str_c(Species_Common_Name, " (n = ", n_Contour,")"),
-                                                                  if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                          str_c(Species_Common_Name, " (n = ", n_Tail,")"),
-                                                                          Species_Common_Name))))))))
-p1 <- df %>%
-  select(Species_Common_Name, cv = cv_Blood, n_Blood = n_Blood) %>%
-  mutate(Tissue_Type = "Whole blood")
-p2 <- df %>%
-  select(Species_Common_Name, cv = cv_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
-p3 <- df %>%
-  select(Species_Common_Name, cv = cv_Tail, n_Tail = n_Tail) %>%
-  mutate(Tissue_Type = "Tail feather")
-
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(cv)) %>%
-  # filtering by sample size so that the names fit on the axis
-  group_by(Species_Common_Name) %>% 
-  mutate(sum = sum(n_Blood, n_Contour, n_Tail, na.rm = T)) %>%
-  filter(sum > 9) %>%
-  # creating a system to better rank the y axis
-  group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(cv))/length(cv)) %>%
-  group_by(Species_Common_Name) %>%
-  mutate(max_percentile = max(percentile)) %>%
-  # this function is critical to order the facets properly
-  transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
-
-ggplot(final, mapping = aes(x = cv, y = reorder(Species_Common_Name, max_percentile), fill = Tissue_Type)) +
-  geom_col() +
-  labs(x = "Coefficient of THg variation", y = "Species (n ≥ 10)") +
-  scale_x_continuous(labels = scales::percent, expand = c(0,0)) +
-  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
-  theme_minimal() +
-  facet_grid(~ Tissue_Type, scales = "free") +
-  theme(axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold"),
-        legend.title = element_blank(),
-        legend.position = "none",
-        strip.background = element_blank(),
-        strip.text.x = element_text(face = "bold"),
-        panel.spacing = unit(1.5, "lines"))
-
-ggsave("Graphs/Sayers_Species_CV_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
-
-# Trophic Niche
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(Trophic_Niche), !is.na(Concentration)) %>%
-  group_by(Trophic_Niche, Tissue_Type) %>%
-  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration), cv = sd/mean) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(Trophic_Niche ~ Tissue_Type, value.var = c("n", "cv"), fill = NA) %>%
-  select(Trophic_Niche, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         cv_Blood = cv_Blood_Hg_ppm, cv_Contour = cv_Contour_Hg_ppm, cv_Tail = cv_Tail_Hg_ppm) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(Trophic_Niche = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                       str_c(Trophic_Niche, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                                       if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                               str_c(Trophic_Niche, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                               if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                       str_c(Trophic_Niche, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                                       if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                               str_c(Trophic_Niche, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                               if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                                       str_c(Trophic_Niche, " (n = ", n_Blood,")"),
-                                                                       if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                               str_c(Trophic_Niche, " (n = ", n_Contour,")"),
-                                                                               if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                                       str_c(Trophic_Niche, " (n = ", n_Tail,")"),
-                                                                                       Trophic_Niche))))))))
-p1 <- df %>%
-  select(Trophic_Niche, cv = cv_Blood, n_Blood = n_Blood) %>%
-  mutate(Tissue_Type = "Whole blood")
-p2 <- df %>%
-  select(Trophic_Niche, cv = cv_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
-p3 <- df %>%
-  select(Trophic_Niche, cv = cv_Tail, n_Tail = n_Tail) %>%
-  mutate(Tissue_Type = "Tail feather")
-
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(cv)) %>%
-  # creating a system to better rank the y axis
-  group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(cv))/length(cv)) %>% 
-  group_by(Trophic_Niche) %>%
-  mutate(max_percentile = max(percentile)) %>%
-  # this function is critical to order the facets properly
-  transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
-
-ggplot(final, mapping = aes(x = cv, y = reorder(Trophic_Niche, max_percentile), fill = Tissue_Type)) +
-  geom_col() +
-  labs(x = "Coefficient of THg variation", y = "Trophic niche") +
-  scale_x_continuous(labels = scales::percent, expand = c(0,0)) +
-  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
-  theme_minimal() +
-  facet_grid(~ Tissue_Type, scales = "free") +
-  theme(axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold"),
-        legend.title = element_blank(),
-        legend.position = "none",
-        strip.background = element_blank(),
-        strip.text.x = element_text(face = "bold"),
-        panel.spacing = unit(1.5, "lines"))
-
-ggsave("Graphs/Sayers_Trophic_CV_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
-
-
-# Primary habitat
-df <- GraphingData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(HAB1), !is.na(Concentration)) %>%
-  group_by(HAB1, Tissue_Type) %>%
-  summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration), cv = sd/mean) %>%
-  # turning the df into a data.table object so dcast can accept more than one value.var
-  data.table() %>% 
-  data.table::dcast(HAB1 ~ Tissue_Type, value.var = c("n", "cv"), fill = NA) %>%
-  select(HAB1, n_Blood = n_Blood_Hg_ppm, n_Contour = n_Contour_Hg_ppm, n_Tail = n_Tail_Hg_ppm,
-         cv_Blood = cv_Blood_Hg_ppm, cv_Contour = cv_Contour_Hg_ppm, cv_Tail = cv_Tail_Hg_ppm) %>% 
-  # this will display the samples sizes for blood, contour, then tail
-  mutate(HAB1 = if_else(!is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                 str_c(HAB1, " (n = ", n_Blood, ", ", n_Contour, ", ", n_Tail, ")"),
-                                 if_else(!is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                         str_c(HAB1, " (n = ", n_Blood, ", ", n_Contour,")"),
-                                         if_else(!is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                 str_c(HAB1, " (n = ", n_Blood, ", ", n_Tail,")"),
-                                                 if_else(is.na(n_Blood) & !is.na(n_Contour) & !is.na(n_Tail),
-                                                         str_c(HAB1, " (n = ", n_Contour, ", ", n_Tail,")"),
-                                                         if_else(!is.na(n_Blood) & is.na(n_Contour) & is.na(n_Tail),
-                                                                 str_c(HAB1, " (n = ", n_Blood,")"),
-                                                                 if_else(is.na(n_Blood) & !is.na(n_Contour) & is.na(n_Tail),
-                                                                         str_c(HAB1, " (n = ", n_Contour,")"),
-                                                                         if_else(is.na(n_Blood) & is.na(n_Contour) & !is.na(n_Tail),
-                                                                                 str_c(HAB1, " (n = ", n_Tail,")"),
-                                                                                 HAB1))))))))
-p1 <- df %>%
-  select(HAB1, cv = cv_Blood, n_Blood = n_Blood) %>%
-  mutate(Tissue_Type = "Whole blood")
-p2 <- df %>%
-  select(HAB1, cv = cv_Contour, n_Contour = n_Contour) %>%
-  mutate(Tissue_Type = "Contour feather")
-p3 <- df %>%
-  select(HAB1, cv = cv_Tail, n_Tail = n_Tail) %>%
-  mutate(Tissue_Type = "Tail feather")
-
-final <- rbind(p1, p2, p3, fill = T) %>% 
-  filter(!is.na(cv)) %>%
-  # creating a system to better rank the y axis
-  group_by(Tissue_Type) %>% # calculating percentile rank for each tissue
-  mutate(percentile = trunc(rank(cv))/length(cv)) %>% 
-  group_by(HAB1) %>%
-  mutate(max_percentile = max(percentile)) %>%
-  # this function is critical to order the facets properly
-  transform(Tissue_Type = factor(Tissue_Type,
-                                 levels = c("Whole blood", "Contour feather", "Tail feather")))
-
-ggplot(final, mapping = aes(x = cv, y = reorder(HAB1, max_percentile), fill = Tissue_Type)) +
-  geom_col() +
-  labs(x = "Coefficient of THg variation", y = "Primary habitat") +
-  scale_x_continuous(labels = scales::percent, expand = c(0,0)) +
-  scale_fill_manual(values = c("#E41A1C", "#4DAF4A", "#377EB8")) +
-  theme_minimal() +
-  facet_grid(~ Tissue_Type, scales = "free") +
-  theme(axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold"),
-        legend.title = element_blank(),
-        legend.position = "none",
-        strip.background = element_blank(),
-        strip.text.x = element_text(face = "bold"),
-        panel.spacing = unit(1.5, "lines"))
-
-ggsave("Graphs/Sayers_Trophic_CV_AllTissues_Hist.jpg", dpi = 800, width = 10, height = 8)
+ggarrange(bloodmap, bodymap, tailmap, labels = c("a)", "b)", "c)"), nrow = 3, ncol = 1)
+ggsave("Graphs/Sayers_Facet_Map_AllTissues.jpg", dpi = 1000, width = 10, height = 15)
+ggsave("Graphs/Sayers_Facet_Map_AllTissues.tiff", dpi = 1000, width = 10, height = 15)
