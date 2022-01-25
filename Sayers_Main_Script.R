@@ -11,8 +11,8 @@ library(janitor)
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-# Cumulative TRACE database
-TRACEData <- read_excel("TRACE_Database_09072021.xlsx", sheet = "All Tropical Birds", 
+# Cumulative TRACE database = BRI + SDZWA + Duke + CINCIA data
+TRACEData <- read_excel("TRACE_Database_01192022.xlsx", sheet = "All Tropical Birds", 
                         col_types = c("text", "text", "text", "text", "text",
                                       "text", "text", "text", "text", "text",
                                       "text", "text", "text", "numeric", "numeric",
@@ -40,25 +40,44 @@ TRACEData <- read_excel("TRACE_Database_09072021.xlsx", sheet = "All Tropical Bi
   # removing captive birds from data set
   filter(Site_Name %nin% c("Belize Zoo", "Belize Raptor Center")) %>% 
   # following the assumption that 95% of THg in feathers is MeHg, we can effectively compare
-  # MeHg concentrations from museum samples
+  # MeHg concentrations with THg concentrations
   mutate(Flank_MeHg_ppm = Flank_MeHg_ppb / 1000) %>% # converting from ppb to ppm
   # joining flank THg and MeHg concentrations together
   unite("Flank_Hg_ppm", c(Flank_Hg_ppm, Flank_MeHg_ppm), na.rm = TRUE, remove = F, sep = "") %>%
   transform(Flank_Hg_ppm = as.numeric(Flank_Hg_ppm)) %>% # converting to numeric for later computation
-  # joining breast and flank concentrations together to create a contour feather category
-  unite("Contour_Hg_ppm", c(Breast_Hg_ppm, Flank_Hg_ppm), na.rm = TRUE, remove = F, sep = "") %>% 
-  transform(Contour_Hg_ppm = as.numeric(Contour_Hg_ppm)) %>% # converting to numeric for later computation
-  # setting exceptionally low Hg values to the lower detection limit of the Hg analyzer
-  mutate(Blood_Hg_ppm = ifelse(Blood_Hg_ppm < 0.001, 0.001, Blood_Hg_ppm),
-         Tail_Hg_ppm = ifelse(Tail_Hg_ppm < 0.001, 0.001, Tail_Hg_ppm),
-         Breast_Hg_ppm = ifelse(Breast_Hg_ppm < 0.001, 0.001, Breast_Hg_ppm),
-         Flank_Hg_ppm = ifelse(Flank_Hg_ppm < 0.001, 0.001, Flank_Hg_ppm),
-         Contour_Hg_ppm = ifelse(Contour_Hg_ppm < 0.001, 0.001, Contour_Hg_ppm))
+  # joining breast and flank concentrations together to create a body feather category
+  unite("Body_Hg_ppm", c(Breast_Hg_ppm, Flank_Hg_ppm), na.rm = TRUE, remove = F, sep = "") %>% 
+  transform(Body_Hg_ppm = as.numeric(Body_Hg_ppm)) %>% # converting to numeric for later computation
+  # excluding samples below the lower detection limit of the Hg analyzer
+  mutate(Blood_Hg_ppm = ifelse(Blood_Hg_ppm < 0.001, NA, Blood_Hg_ppm),
+         Tail_Hg_ppm = ifelse(Tail_Hg_ppm < 0.001, NA, Tail_Hg_ppm),
+         Breast_Hg_ppm = ifelse(Breast_Hg_ppm < 0.001, NA, Breast_Hg_ppm),
+         Flank_Hg_ppm = ifelse(Flank_Hg_ppm < 0.001, NA, Flank_Hg_ppm),
+         Body_Hg_ppm = ifelse(Body_Hg_ppm < 0.001, NA, Body_Hg_ppm)) %>%
+  # excluding historical feather samples from museums
+  filter(Year > 2006) %>%  
+  # creating a seasonal column distinguishing wet and dry season by region
+  # Belize wet season: June through December
+  mutate(Season = if_else(Country == "Belize" & Month %in% c(6:12), "Wet",
+  # western Mexico wet season: June through October
+                  if_else(Country == "Mexico" & Month %in% c(6:10), "Wet",
+  # Puerto Rico wet season: May through December
+                  if_else(Country == "Puerto Rico" & Month %in% c(5:12), "Wet",
+  # Dominican Republic wet season: May through December
+                  if_else(Country == "Dominican Republic" & Month %in% c(5:12), "Wet",
+  # Nicaragua wet season: May through October                    
+                  if_else(Country == "Nicaragua" & Month %in% c(5:10), "Wet",
+  # Costa Rica wet season: May through October       
+                  if_else(Country == "Costa Rica" & Month %in% c(5:10), "Wet",
+  # Panama wet season: May through November      
+                  if_else(Country == "Panama" & Month %in% c(5:11), "Wet", 
+  # Madre de Dios, Peru wet season: October through March      
+                  if_else(Country == "Peru" & Month %in% c(1:3, 10:12), "Wet", "Dry")))))))))
 
 
 ##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2019 CLASSIFICATIONS #####
 
-taxa <- read_excel("eBird-Clements-v2019-integrated-checklist-August-2019.xlsx") %>%
+taxa <- read_excel("Spreadsheets/eBird-Clements-v2019-integrated-checklist-August-2019.xlsx") %>%
   rename(Species_Latin_Name = `scientific name`, Order = order, Family = family) %>% # renaming key column names
   select(Species_Latin_Name, Order, Family)
 
@@ -67,26 +86,42 @@ unjoined <- anti_join(TRACEData, taxa, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name) # This should be 0 -- It is!
 
 
-##### CLASSIFYING SPECIES VIA HABITAT USING Parker et al. (1996) CRITERIA #####
+##### CLASSIFYING SPECIES VIA HABITAT USING PARKER et al. (1996) CRITERIA #####
 
-adata <- read_csv("Parker_Stotz_Fitzpatrick_1996/adata.csv") # neotropical breeder traits
-# bdata <- read_csv("Parker_Stotz_Fitzpatrick_1996/bdata.csv") # neotropical breeder country occurance
-cdata <- read_csv("Parker_Stotz_Fitzpatrick_1996/cdata.csv") # nonbreeding neotropical migrant traits
-# ddata <- read_csv("Parker_Stotz_Fitzpatrick_1996/ddata.csv") # migratory neotropical breeder traits
-# edata <- read_csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") # austral migrant traits
+adata <- read_csv("Parker_Stotz_Fitzpatrick_1996/adata.csv") %>% # neotropical breeder traits
+  mutate(Migratory_Status = "Resident")
+cdata <- read_csv("Parker_Stotz_Fitzpatrick_1996/cdata.csv") %>%  # neotropical migrant nonbreeding traits
+  mutate(Migratory_Status = "Full migrant")
+ddata <- read_csv("Parker_Stotz_Fitzpatrick_1996/ddata.csv") %>% # neotropical migrant breeding traits
+  mutate(Migratory_Status = "Partial migrant")
+edata <- read_csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") %>% # austral migrant traits
+  mutate(Migratory_Status = "Austral migrant")
 
-# combing relevant data frames for our purposes (a and c) by rows without duplicating column headings
-parker <- full_join(adata, cdata) %>% # all columns in all data sets seem to be accounted for
-  unite(Species_Latin_Name, c("GENUS", "SPECIES"), sep = " ", remove = F)
-  
+# combing relevant data frames for our purposes (a, c, and e) by rows without duplicating column headings
+parker <- full_join(cdata, ddata) %>%
+  full_join(edata) %>%
+  full_join(adata) %>%
+  unite(Species_Latin_Name, c("GENUS", "SPECIES"), sep = " ", remove = F) %>% 
+  # this function determines which neotropical "residents" are duplicated as partial
+  # migrants in "ddata" or "austral migrants in "edata", it then returns only the
+  #data associated with the resident entry (e.g. Egretta alba -- old name for Great Egret)
+  distinct(Species_Latin_Name, .keep_all = T) %>% 
+  # fixing migratory classes of certain species
+  mutate(Migratory_Status = if_else(Species_Latin_Name == "Elanoides forficatus", "Partial migrant", Migratory_Status)) %>% # Swallow-tailed Kite
+  mutate(Migratory_Status = if_else(Species_Latin_Name == "Haematopus palliatus", "Partial migrant", Migratory_Status)) %>% # American Oystercatcher
+  mutate(Migratory_Status = if_else(Species_Latin_Name == "Himantopus mexicanus", "Partial migrant", Migratory_Status)) %>% # Black-necked Stilt
+  mutate(Migratory_Status = if_else(Species_Latin_Name == "Mycteria americana", "Partial migrant", Migratory_Status)) %>% # Wood Stork
+  mutate(Migratory_Status = if_else(Species_Latin_Name == "Progne chalybea", "Partial migrant", Migratory_Status)) %>% # Gray-breasted Martin
+  mutate(Migratory_Status = if_else(Species_Latin_Name == "Butorides virescens", "Partial migrant", Migratory_Status)) # Green Heron
+
 # Which species were not joined due to taxonomic changes or subspecies?
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
-unique(unjoined$Species_Latin_Name) # 109 taxa had issues
+unique(unjoined$Species_Latin_Name) # 107 taxa had issues
 
 # Manually changing Parker et al. dataset to accommodate for changed species names, lumps,
 # and splits since 1996 using Birds of the World taxonomic criteria. Only changing species
 # relevant to BRI + CINCIA (for right now at least). Jacob Socolar made excellent headway
-# on this, but some of his changes are already outdated given recent taxonomic changes.
+# on this, but some of his changes are already outdated given recent taxonomic updates.
 # After pitching the project to the BOW team, they are currently discussing creating
 # a resource similar to the Parker criteria but for all bird species — so, this work
 # should at least serve in the interim of that endeavor being completed.
@@ -110,6 +145,7 @@ parker <- parker %>%
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Wilsonia pusilla", "Cardellina pusilla", Species_Latin_Name)) %>% # Wilson's Warbler
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Ceryle torquata", "Megaceryle torquata", Species_Latin_Name)) %>% # Ringed Kingfisher
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Chlorospingus ophthalmicus", "Chlorospingus flavopectus", Species_Latin_Name)) %>% # Common Chlorospingus
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Contopus borealis", "Contopus cooperi", Species_Latin_Name)) %>% # Olive-sided Flycatcher
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Piaya minuta", "Coccycua minuta", Species_Latin_Name)) %>% # Little Cuckoo
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Scardafella inca", "Columbina inca", Species_Latin_Name)) %>% # Inca Dove
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Columbina (talpacoti) talpacoti", "Columbina talpacoti", Species_Latin_Name)) %>% # Ruddy Ground Dove
@@ -179,7 +215,7 @@ parker <- parker %>%
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
-# We have 36 taxa that have been split/lumped since 1996 or were just excluded from the df
+# We have 34 taxa that have been split/lumped since 1996 or were just excluded from the df
 
 # Manually adding species to accommodate for splits/lumps information using BOW criteria
 # I am choosing to leave the original classifications in the df so that we can reference it later if necessary
@@ -807,37 +843,6 @@ parker <- parker %>%
           EPC = NA, STP = NA, NAN = NA, CAN = NA, SAN = NA, NSA = "Y", TEP = "Y", AMN = "Y", AMS = "Y",   
           CSA = NA, ATL = "Y", PAM = NA, PAT = NA,
           STATUS = NA) %>% # resident
-  add_row(ORDER = "PASSERIFORMES",
-          FAMILY = "TYRANNIDAE",
-          Species_Latin_Name = "Contopus cooperi", # Olive-sided Flycatcher, never included by Parker
-          GENUS = "Contopus",
-          SPECIES = "cooperi",
-          NUMB = NA, # Parker classification number, irrelevant
-          SNST = "H", # Sensitivity (Chris is unsure of what to log this as)
-          STRAT = "C", # Foraging Strata
-          CNTAB = NA, # Center of Abundance (migrants do not have a CNTAB, but they occupy MM in nonbreeding)
-          REL = NA, # Relative Abundance (migrants do not have a REL, but could be U)
-          MIN = 400, # Minimum Elevation, 0 = Lowlands
-          QMIN = NA, # Minimum elevation qualifier, ? = Uncertain value.
-          MAX = 3400, # Maximum Elevation
-          QMAX = NA, # Maximum elevation qualifier
-          CP = 2, # Conservation Priority 
-          RP = 3, # Research Priority (Chris is unsure of what to log this as)
-          SUB = NA, # Subregions
-          MICRO = NA, # Microhabitats 
-          NHAB = 2, # Number of Habitats (Chris only considered the nonbreeding habitat usage when coding this)
-          NZOO = 3, # Number of Zoogeographic Regions
-          HAB1 = "F4E", HAB2 = "F1E", HAB3 = NA, HAB4 = NA, HAB5 = NA, HAB6 = NA, HAB7 = NA, #Habitat
-          F1 = "E", F2 = NA, F3 = NA, F4 = "E", F5 = NA, F6 = NA, F7 = NA, F8 = NA,
-          F9 = NA, F10 = NA, F11 = NA, F12 = NA, F13 = NA, F14 = NA, F15 = NA,
-          N1 = NA, N2 = NA, N3 = NA, N4 = NA, N5 = NA, N6 = NA, N7 = NA, N8 = NA,
-          N9 = NA, N10 = NA, N11 = NA, N12 = NA, N13 = NA, N14 = NA,
-          A1 = NA, A2 = NA, A3 = NA, A4 = NA, A5 = NA, A6 = NA, A7 = NA, A8 = NA,
-          A9 = NA, A10 = NA, A11 = NA, A12 = NA,
-          GAN = NA, LAN = NA, BSR = NA, MPL = NA, PAS = NA, MAH = NA, GCS = "Y", CDH = "Y", CHO = NA,    
-          EPC = NA, STP = NA, NAN = "Y", CAN = NA, SAN = NA, NSA = NA, TEP = NA, AMN = NA, AMS = NA,   
-          CSA = NA, ATL = NA, PAM = NA, PAT = NA,
-          STATUS = "A") %>% # all migrate
   add_row(ORDER = "CUCULIFORMES",
           FAMILY = "CUCULIDAE",
           Species_Latin_Name = "Coccyzus longirostris", # Hispaniolan Lizard-Cuckoo, Caribbean species never included in Parker
@@ -1059,8 +1064,9 @@ parker <- parker %>%
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
+
 # Missing species that still need to be added:
-# This not an immediate priority as of 12/2/20 because these species don't have Hg samples
+# This not an immediate priority as of 1/10/22 because these species don't have Hg samples
 # Lonchura malacca - Tricolored Munia
 # Psittacara chloropterus - Hispaniolan Parakeet
 
@@ -1082,7 +1088,7 @@ pigot <- read_excel("Pigot2020TrophicNiche.xlsx") %>%
 
 # Which species were not joined due to taxonomic changes or subspecies since 2018?
 unjoined <- anti_join(TRACEData, pigot, by = "Species_Latin_Name")
-unique(unjoined$Species_Latin_Name) # We have 57 taxa that were unjoined
+unique(unjoined$Species_Latin_Name) # We have 56 taxa that were unjoined
 
 # New name is being assigned to old Pigot name
 pigot <- pigot %>%
@@ -1136,7 +1142,7 @@ pigot <- pigot %>%
 
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, pigot, by = "Species_Latin_Name")
-unique(unjoined$Species_Latin_Name) # We have 11 taxa that have been split/lumped since 2019 or were just excluded from the df
+unique(unjoined$Species_Latin_Name) # We have 10 taxa that have been split/lumped since 2019 or were just excluded from the df
 
 # Manually adding species to accommodate for splits/lumps information
 # I am choosing to leave the original classifications in the df so that we can reference it later if necessary
@@ -1181,6 +1187,10 @@ pigot <- pigot %>%
           Foraging_Niche = "Invertivore bark") %>% 
   mutate(Foraging_Niche = ifelse(Foraging_Niche == "NA", "Generalist", Foraging_Niche))
 # NOTE: Omnivores do not have foraging niches in this df, but I am doing this for visualization purposes later
+
+# For added ecological clarity, we change trophic niche "Vertivore" to "Terrestrial vertivore"
+pigot <- pigot %>% 
+  mutate(Trophic_Niche = ifelse(Trophic_Niche == "Vertivore", "Terrestrial vertivore", Trophic_Niche))
 
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, pigot, by = "Species_Latin_Name")
@@ -1238,35 +1248,19 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   mutate(HAB1 = ifelse(HAB1 == "A9", "Streams", HAB1)) %>%
   mutate(HAB1 = ifelse(HAB1 == "A10", "Bogs", HAB1)) %>%
   mutate(HAB1 = ifelse(HAB1 == "A11", "Coastal waters", HAB1)) %>%
-  mutate(HAB1 = ifelse(HAB1 == "A12", "Pelagic waters", HAB1)) %>% 
-  # defining migratory status
-  mutate(STATUS = ifelse(is.na(STATUS), "Resident", STATUS)) %>%
-  mutate(STATUS = ifelse(STATUS == "A", "Full migrant", STATUS)) %>% # changing "all" to "full"
-  mutate(STATUS = ifelse(STATUS == "S", "Partial migrant", STATUS)) %>% # changing "some" to "partial"
-  # fixing migratory classes of certain species
-  mutate(STATUS = ifelse(Species_Common_Name == "Common Yellowthroat", "Partial migrant", STATUS)) %>%
-  mutate(STATUS = ifelse(Species_Common_Name == "Gray Catbird", "Full migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Northern Parula", "Full migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Orchard Oriole", "Partial migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Painted Bunting", "Partial migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Prairie Warbler", "Full migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Summer Tanager", "Full migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Spotted Sandpiper", "Full migrant", STATUS)) %>%
-  mutate(STATUS = ifelse(Species_Common_Name == "Western Wood-Pewee", "Partial migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "White-eyed Vireo", "Partial migrant", STATUS)) %>%
-  mutate(STATUS = ifelse(Species_Common_Name == "Yellow-breasted Chat", "Partial migrant", STATUS)) %>% 
-  mutate(STATUS = ifelse(Species_Common_Name == "Yellow Warbler", "Partial migrant", STATUS)) %>% 
+  mutate(HAB1 = ifelse(HAB1 == "A12", "Pelagic waters", HAB1)) %>%
+  # setting all the undefined species (e.g. Xiphorhynchus sp.) to "resident"
+  mutate(Migratory_Status = if_else(is.na(Migratory_Status), "Resident", Migratory_Status)) %>% 
   # excluding feather samples from migratory species because of molt uncertainty
-  mutate(Tail_Hg_ppm = ifelse(STATUS != "Resident" & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
-  mutate(Contour_Hg_ppm = ifelse(STATUS != "Resident" & !is.na(Contour_Hg_ppm), NA, Contour_Hg_ppm)) %>%
-  # excluding historical feather samples from museums
-  filter(Year > 2006)
+  mutate(Tail_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
+  mutate(Body_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm))
+
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
 
 # How many samples do we have and from what organizations
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Contour_Hg_ppm, Tail_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Collecting_Organization, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1277,20 +1271,19 @@ CollectiveData %>%
 
 # How many total sampled orders do we have?
 summary <- CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Contour_Hg_ppm, Tail_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Order, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
   count(Order) %>% 
   view()
-nrow(summary)
 
 # How many total samples do we have?
 sum(summary$n)
 
 # How many total sampled families do we have?
 summary <- CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Contour_Hg_ppm, Tail_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Family, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration), !is.na(Family)) %>%
@@ -1300,7 +1293,7 @@ nrow(summary)
 
 # How many total sampled taxa do we have?
 summary <- CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Contour_Hg_ppm, Tail_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Species_Common_Name, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1312,7 +1305,7 @@ nrow(summary)
 
 # How many samples do we have and for what tissues?
 summary <- CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Contour_Hg_ppm, Tail_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Country, Year, Order, Family, Species_Common_Name, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>% 
@@ -1333,7 +1326,7 @@ summary <- CollectiveData %>%
 
 # How many samples do we have and for what countries?
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Contour_Hg_ppm, Tail_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>%
   select(Country, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1344,7 +1337,7 @@ CollectiveData %>%
 
 # Creating a country Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Tissue_Type, Country, Year, Species_Common_Name, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1363,7 +1356,7 @@ CollectiveData %>%
 
 # Creating a site Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Tissue_Type, Country, Site_Name, Year, Species_Common_Name, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1382,7 +1375,7 @@ CollectiveData %>%
 
 # Creating an order Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Order, Tissue_Type, Country, Year, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1401,7 +1394,7 @@ CollectiveData %>%
 
 # Creating a family Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Order, Family, Tissue_Type, Country, Year, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
@@ -1420,14 +1413,14 @@ CollectiveData %>%
 
 # Creating a species Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Order, Family, Species_Common_Name, Species_Latin_Name, Tissue_Type,
           Country, Year, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
   group_by(Order, Family, Species_Common_Name, Species_Latin_Name, Tissue_Type) %>%
   summarize(Country = unique(Country), Min_Year = min(Year), Max_Year = max(Year), n = n(),
-            Mean = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
+            Mean = mean(Concentration), Mean2 = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
             Max = max(Concentration), CV = (SD/Mean)*100) %>% 
   mutate_at(9:14, funs(round(., 3))) %>% 
   mutate(Year_Range = if_else(Min_Year != Max_Year,
@@ -1440,12 +1433,12 @@ CollectiveData %>%
 
 # Creating a trophic niche Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Trophic_Niche, Species_Common_Name, Tissue_Type, Concentration, Country, Year) %>% 
   filter(!is.na(Concentration)) %>%
   group_by(Trophic_Niche, Tissue_Type) %>%
-  summarize(n_Species = length(unique(Species_Common_Name)), n = n(), Mean = mean(Concentration),
+  summarize(n_Species = length(unique(Species_Common_Name)), n = n(), Mean = mean(Concentration), Mean2 = mean(Concentration),
             SD = sd(Concentration), Min = min(Concentration), Max = max(Concentration), CV = (SD/Mean)*100,
             Country = unique(Country), Min_Year = min(Year), Max_Year = max(Year)) %>% 
   mutate_at(5:9, funs(round(., 3))) %>%
@@ -1459,7 +1452,7 @@ CollectiveData %>%
 
 # Creating a primary habitat Hg table displaying arithmetic mean and SD
 CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
+  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                 names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(HAB1, Species_Common_Name, Tissue_Type, Concentration, Country, Year) %>% 
   filter(!is.na(HAB1), !is.na(Concentration)) %>%
@@ -1479,12 +1472,12 @@ CollectiveData %>%
 # Creating species association table
 CollectiveData %>%
   select(Order, Family, Species_Common_Name, Species_Latin_Name, Trophic_Level, Trophic_Niche,
-         HAB1, STATUS, Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm) %>%
+         HAB1, Migratory_Status, Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm) %>%
   # only including full species names
   filter(!(str_detect(Species_Common_Name, " sp."))) %>%
-  filter(!is.na(Blood_Hg_ppm) | !is.na(Tail_Hg_ppm) | !is.na(Contour_Hg_ppm)) %>%
+  filter(!is.na(Blood_Hg_ppm) | !is.na(Tail_Hg_ppm) | !is.na(Body_Hg_ppm)) %>%
   group_by(Order, Family, Species_Common_Name, Species_Latin_Name, Trophic_Level, Trophic_Niche,
-           HAB1, STATUS) %>%
+           HAB1, Migratory_Status) %>%
   summarize(n = n()) %>% # Consolidating to 1 row per species
   view() %>% 
   write.csv("SpeciesClass.csv")
@@ -1495,41 +1488,46 @@ library(tidyverse)
 
 # creating a data frame for modeling purposes
 HgSamples <- CollectiveData %>%
+  # excluding duplicate samples derived from the same individual
+  mutate(Tail_Hg_ppm = ifelse(!is.na(Blood_Hg_ppm) & !is.na(Body_Hg_ppm) & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
+  mutate(Tail_Hg_ppm = ifelse(!is.na(Blood_Hg_ppm) & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
+  mutate(Body_Hg_ppm = ifelse(!is.na(Blood_Hg_ppm) & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>% 
+  mutate(Body_Hg_ppm = ifelse(!is.na(Tail_Hg_ppm) & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>% 
   # adding tissue type as a data field 
-  pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Contour_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "HgConcentration") %>% 
-  # removing NA values in key variables so the models can run
-  filter(!is.na(HgConcentration), !is.na(Trophic_Niche), !is.na(HAB1),
-         !is.na(STATUS), !is.na(Mining_Present_Yes_No)) %>%
-  # Creating new column with natural-log transformed THg concentrations
-  mutate(lHgConcentration = log(HgConcentration)) %>% 
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Hg_Concentration") %>% 
   # only including full species names
   filter(!(str_detect(Species_Common_Name, " sp."))) %>%
+  # removing NA values in key variables so the models can run
+  filter(!is.na(Hg_Concentration), !is.na(Trophic_Niche), !is.na(HAB1),
+         !is.na(Migratory_Status), !is.na(Mining_Present_Yes_No), 
+         !is.na(Family)) %>%
+  # Creating new column with natural-log transformed THg concentrations
+  mutate(lHg_Concentration = log(Hg_Concentration)) %>% 
   # Creating new column with date to capture annual trends
-  mutate(Date = make_date(Year, Month, Day))
-  
-  
+  mutate(Date = make_date(Year, Month, Day),
+         Julian_Date = yday(Date))
+
 # much of the strategy below is from Zurr et al. (2010)  https://doi.org/10.1111/j.2041-210X.2009.00001.x
 
 # OUTLIERS & NORMALITY OF RESPONSE VARIABLE ----------
-ggdensity(HgSamples$HgConcentration, xlab = "Hg Concentration (µg/g)") # some high outliers 
-ggqqplot(HgSamples$HgConcentration, ylab = "Hg Concentration (µg/g)") # tails stray from far from normal
-shapiro.test(HgSamples$HgConcentration) # W = 0.22158, p-value < 2.2e-16, not normal
+ggdensity(HgSamples$Hg_Concentration, xlab = "Hg Concentration (µg/g)") # some high outliers 
+ggqqplot(HgSamples$Hg_Concentration, ylab = "Hg Concentration (µg/g)") # tails stray from far from normal
+shapiro.test(HgSamples$Hg_Concentration) # W = 0.21815, p-value < 2.2e-16, not normal
 # log-transformation may be necessary for linear models
 
 # log-transformed data diagnostics
-ggdensity(HgSamples$lHgConcentration, xlab = "ln(Hg) Concentration (µg/g)")
-ggqqplot(HgSamples$lHgConcentration) # much better than before
-shapiro.test(HgSamples$lHgConcentration) # W = 0.992, p-value = 1.26e-07, not normal
+ggdensity(HgSamples$lHg_Concentration, xlab = "ln[Hg Concentration (µg/g)]")
+ggqqplot(HgSamples$lHg_Concentration) # much better than before
+shapiro.test(HgSamples$lHg_Concentration) # W = 0.99371, p-value = 7.895e-06, not normal
 
-# Boxplot & Cleavland dotplot of raw data by Family
-boxplot(HgSamples$HgConcentration ~ HgSamples$Family)
-ggplot(HgSamples, aes(x = HgConcentration, y = Family, color = Tissue_Type)) +
+# Cleavland dotplot of raw data by Family
+ggplot(HgSamples, aes(x = Hg_Concentration, y = Family, color = Tissue_Type)) +
   geom_point() +
   labs(x = "Hg Concentration (µg/g ww)", y = "Family")
 
 # Cleavland dotplot of natural-log transformed data, no apparent outliers anymore
-ggplot(HgSamples, aes(x = lHgConcentration, y = Family, color = Tissue_Type)) +
+ggplot(HgSamples, aes(x = log(Hg_Concentration), y = Family, color = Tissue_Type)) +
   geom_point() +
   labs(x = "ln(Hg) Concentration (µg/g ww)", y = "Family")
 
@@ -1541,21 +1539,29 @@ library(lme4)
 library(usdm)
 library(lmerTest)
 
-# ALL TISSUES + ALL SAMPLES -----------------------------------------------
+# choosing the ideal random effect structure
+nullmodel1 <- lmer(log(Hg_Concentration) ~ (1 | SiteID) + (1 | Species_Common_Name) + (1 | Date), data = HgSamples, REML = F)
+nullmodel2 <- lmer(log(Hg_Concentration) ~ (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date), data = HgSamples, REML = F)
+nullmodel3 <- lmer(log(Hg_Concentration) ~ (1 | SiteID) + (1 | Family) + (1 | Date), data = HgSamples, REML = F)
+nullmodel4 <- lmer(log(Hg_Concentration) ~ (1 | Family/SiteID) + (1 | Date), data = HgSamples, REML = F)
+nullmodel5 <- lmer(log(Hg_Concentration) ~ (1 | Species_Common_Name/SiteID) + (1 | Date), data = HgSamples, REML = F)
 
-fullmodel <- lmer(lHgConcentration ~ 
+anova(nullmodel1, nullmodel2, nullmodel3, nullmodel4, nullmodel5)
+# nullmodel2 is a clear winner, so we will use this RE structure in the full model
+
+fullmodel <- lmer(log(Hg_Concentration) ~ 
                     
                     # Hg toxicokinetics
                     Tissue_Type +
                     
                     # functional traits
-                    Trophic_Niche + HAB1 + STATUS +
+                    Trophic_Niche + HAB1 + Migratory_Status +
                     
                     # landscape traits
                     Mining_Present_Yes_No +
                     
-                    # random effects
-                    (1 | Site_Name) + (1 | Species_Common_Name) + (1 | Date),
+                    # crossed random effects
+                    (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
                   
                   data = HgSamples, REML = F)
 
@@ -1578,8 +1584,12 @@ shapiro.test(residuals(fullmodel)) # not normal
 # normality plot has a few tail stragglers, but the rest looks good
 
 # Checking for normality of random effects
-ggqqplot(ranef(fullmodel)$Site_Name[,1]) # few tail stragglers, but the rest looks okay
-shapiro.test(ranef(fullmodel)$Site_Name[,1]) # we are normal
+ggqqplot(ranef(fullmodel)$SiteID[,1]) # few tail stragglers, but the rest looks okay
+shapiro.test(ranef(fullmodel)$SiteID[,1]) # we are normal
+
+# tails stray from normal
+ggqqplot(ranef(fullmodel)$Family[,1])
+shapiro.test(ranef(fullmodel)$Family[,1]) # we are normal
 
 # tails stray from normal
 ggqqplot(ranef(fullmodel)$Species_Common_Name[,1])
@@ -1591,7 +1601,7 @@ shapiro.test(ranef(fullmodel)$Date[,1]) # we are not normal
 
 # Checking for autocorrelation/independence
 library(lawstat)
-acf(HgSamples$HgConcentration) # raw data is autocorrelated
+acf(HgSamples$Hg_Concentration) # raw data is autocorrelated
 acf(residuals(fullmodel)) # random effects variable corrects for this
 runs.test(residuals(fullmodel)) # we do not have autocorrelated data
 
@@ -1600,21 +1610,21 @@ runs.test(residuals(fullmodel)) # we do not have autocorrelated data
 library(AICcmodavg)
 library(lmerTest)
 
-fullmodel <- lmer(lHgConcentration ~ 
-                    
-                    # Hg toxicokinetics
-                    Tissue_Type +
-                    
-                    # functional traits
-                    Trophic_Niche + HAB1 + STATUS +
-                    
-                    # landscape traits
-                    Mining_Present_Yes_No +
-                    
-                    # random effects
-                    (1 | Site_Name) + (1 | Species_Common_Name) + (1 | Date),
-                  
-                  data = HgSamples, REML = F)
+fullmodel <- lmer(log(Hg_Concentration) ~ 
+                     
+                     # Hg toxicokinetics
+                     Tissue_Type +
+                     
+                     # functional traits
+                     Trophic_Niche + HAB1 + Migratory_Status +
+                     
+                     # landscape traits
+                     Mining_Present_Yes_No +
+                     
+                     # random effects
+                     (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
+                   
+                   data = HgSamples, REML = F)
 
 summary(fullmodel)
 r.squaredGLMM(fullmodel)
@@ -1622,9 +1632,11 @@ anova(fullmodel)
 rand(fullmodel)
 
 options(na.action = "na.fail")
-d.out <- dredge(fullmodel)
+# computes marginal and conditional R^2
+d.out <- dredge(fullmodel, extra = list("Rsq" = function(x){r.squaredGLMM(x)}))
 View(d.out)
 options(na.action = "na.omit")
+write.csv(d.out, "model_output.csv")
 
 #subset(d.out, delta < 2)
 #subset(d.out, cumsum(d.out$weight) <= .95)
@@ -1636,21 +1648,23 @@ options(na.action = "na.omit")
 #confint(modelavg) # unconditional 95% CI
 #MuMIn::importance(modelavg)
 
-
 # 1st place model by a long-shot
-topmodel <- lmer(lHgConcentration ~ Trophic_Niche + Tissue_Type + 
-                 Mining_Present_Yes_No + (1 | SiteID) + (1 | Species_Common_Name)
-                 + (1 | Date), data = HgSamples, REML = F)
+topmodel <- lmer(log(Hg_Concentration) ~ Trophic_Niche + Tissue_Type + Mining_Present_Yes_No +
+                   (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
+                 data = HgSamples, REML = F)
 
 summary(topmodel)
 r.squaredGLMM(topmodel)
 anova(topmodel)
 rand(topmodel)
 
-# 2nd place model
-topmodel <- lmer(lHgConcentration ~ Trophic_Niche + Tissue_Type + 
-                   Mining_Present_Yes_No + STATUS + (1 | SiteID) + (1 | Species_Common_Name)
-                 + (1 | Date), data = HgSamples, REML = F)
 
-summary(topmodel)
-r.squaredGLMM(topmodel)
+# 2nd place model
+model2 <- lmer(log(Hg_Concentration) ~ Trophic_Niche + Tissue_Type + Mining_Present_Yes_No +
+                 Migratory_Status + (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
+               data = HgSamples, REML = F)
+
+summary(model2)
+r.squaredGLMM(model2)
+anova(model2)
+rand(model2)
