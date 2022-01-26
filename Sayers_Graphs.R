@@ -1,4 +1,5 @@
-# Script designed to produce graphs featured in publication and appendix
+
+# Script designed to produce graphs featured in publication and annex
 # Requires objects from Sayers_Main_Script.R
 
 library(tidyverse)
@@ -69,8 +70,8 @@ ggplot(pr, mapping = aes(x = predicted, y = reorder(Trophic_Niche.s, predicted),
         strip.text.y = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Predicted_Trophic_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Predicted_Trophic_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Predicted_Trophic_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Predicted_Trophic_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 ## points
 #ggplot(pr, mapping = aes(x = predicted, y = reorder(Trophic_Niche.s, predicted),
@@ -139,8 +140,8 @@ ggplot(pr, mapping = aes(x = predicted, y = reorder(Family.s, predicted),
         strip.text.y = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Predicted_Family_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Predicted_Family_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Predicted_Family_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Predicted_Family_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 ## points
 #ggplot(pr, mapping = aes(x = predicted, y = reorder(Family.s, predicted),
@@ -213,8 +214,8 @@ ggplot(pr, mapping = aes(x = predicted, y = reorder(Site_Name.s, predicted),
         strip.text.y = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Predicted_Site_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Predicted_Site_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Predicted_Site_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Predicted_Site_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 ## points
 #ggplot(pr, mapping = aes(x = predicted, y = reorder(Site_Name.s, predicted),
@@ -362,8 +363,8 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Order, max_percentile), fill =
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Order_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Order_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Order_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Order_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # FAMILY VARIATION --------------------------------------------------------
@@ -423,8 +424,8 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Family, max_percentile), fill 
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Family_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Family_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Family_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Family_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # SPECIES VARIATION --------------------------------------------------------
@@ -455,7 +456,6 @@ p3 <- df %>%
 
 final <- rbind(p1, p2, p3) %>%
   filter(!is.na(mean)) %>%
-  view()
   group_by(Species_Common_Name) %>% 
   mutate(sum = sum(n_Blood, n_Body, n_Tail, na.rm = T)) %>% 
   filter(sum > 9) %>%
@@ -485,8 +485,8 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Species_Common_Name, max_perce
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Species_AllTissues_Hist.jpg", dpi = 1000, width = 8, height = 10)
-ggsave("Graphs/Sayers_Species_AllTissues_Hist.tiff", dpi = 1000, width = 8, height = 10)
+ggsave("FinalGraphs/Sayers_Species_AllTissues_Hist.jpg", dpi = 1000, width = 8, height = 10)
+ggsave("FinalGraphs/Sayers_Species_AllTissues_Hist.tiff", dpi = 1000, width = 8, height = 10)
 
 
 # TROPHIC NICHE x PRIMARY HABITAT ---------------------------------------------
@@ -554,8 +554,8 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Type, max_percentile),
         strip.placement = "outside",
         panel.spacing = unit(1, "lines"))
 
-ggsave("Graphs/Sayers_TrophicxHabitat_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_TrophicxHabitat_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_TrophicxHabitat_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_TrophicxHabitat_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # SITE VARIATION ---------------------------------------------------------
@@ -618,8 +618,8 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Site_Name, max_percentile), fi
         strip.text.x = element_text(face = "bold"),
         panel.spacing = unit(1.5, "lines"))
 
-ggsave("Graphs/Sayers_Site_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Site_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Site_AllTissues_Hist.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Site_AllTissues_Hist.tiff", dpi = 1000, width = 10, height = 8)
 
 
 # RISK ASSESSMENT ---------------------------------------------------------
@@ -662,8 +662,8 @@ bloodrisk <- CollectiveData %>%
         #legend.position = "none",
         aspect.ratio = 1)
 
-ggsave("Graphs/Sayers_Risk_Blood.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Risk_Blood.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Risk_Blood.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Risk_Blood.tiff", dpi = 1000, width = 10, height = 8)
 
 # Risk graph for body feathers
 bodyrisk <- CollectiveData %>%
@@ -704,8 +704,8 @@ bodyrisk <- CollectiveData %>%
         #legend.position = "none",
         aspect.ratio = 1)
 
-ggsave("Graphs/Sayers_Risk_Body.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Risk_Body.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Risk_Body.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Risk_Body.tiff", dpi = 1000, width = 10, height = 8)
 
 # Risk graph for rectrices
 tailrisk <- CollectiveData %>%
@@ -744,13 +744,13 @@ tailrisk <- CollectiveData %>%
         #legend.position = "none",
         aspect.ratio = 1)
 
-ggsave("Graphs/Sayers_Risk_Tail.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Risk_Tail.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Risk_Tail.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Risk_Tail.tiff", dpi = 1000, width = 10, height = 8)
 
 
 ggarrange(bloodrisk, bodyrisk, tailrisk, labels = c("a)", "b)", "c)"), nrow = 3, ncol = 1)
-ggsave("Graphs/Sayers_Facet_Risk_AllTissues.jpg", dpi = 1000, width = 10, height = 15)
-ggsave("Graphs/Sayers_Facet_Risk_AllTissues.tiff", dpi = 1000, width = 10, height = 15)
+ggsave("FinalGraphs/Sayers_Facet_Risk_AllTissues.jpg", dpi = 1000, width = 10, height = 15)
+ggsave("FinalGraphs/Sayers_Facet_Risk_AllTissues.tiff", dpi = 1000, width = 10, height = 15)
 
 
 # MAPS ------------------------------------------------------------------
@@ -781,7 +781,7 @@ ggmap(satellitemap) +
              position = position_jitter(width = 0.5, height = 0.5)) +
   scale_color_gradient(high = "red", low = "yellow") +
   scale_size(range = c(8,2)) + # setting the point size
-  labs(x = "Longitude", y = "Latitude", color = "ln[Bird Hg (µg/g)]") +
+  labs(x = "Longitude", y = "Latitude", color = "ln[THg (µg/g)]") +
   theme(#axis.title.x = element_text(face = "bold"),
     #axis.title.y = element_text(face = "bold"),
     axis.title.x = element_blank(),
@@ -794,8 +794,8 @@ ggmap(satellitemap) +
     aspect.ratio = 1) +
     guides(size = "none") # removing size legend 
 
-ggsave("Graphs/Sayers_Satellite_Circle_AllTissue_GAbstract.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Satellite_Circle_AllTissue_GAbstract.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_AllTissue_GAbstract.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_AllTissue_GAbstract.tiff", dpi = 1000, width = 10, height = 8)
 
 # Blood map with points as circles
 MapData <- CollectiveData %>%
@@ -830,8 +830,8 @@ bloodmap <- ggmap(satellitemap) +
     aspect.ratio = 1) +
   guides(size = "none") # removing size legend 
 
-ggsave("Graphs/Sayers_Satellite_Circle_Blood_Map.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Satellite_Circle_Blood_Map.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_Blood_Map.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_Blood_Map.tiff", dpi = 1000, width = 10, height = 8)
 
 # Body feather map with points
 MapData <- CollectiveData %>%
@@ -863,8 +863,8 @@ bodymap <- ggmap(satellitemap) +
     aspect.ratio = 1) +
   guides(size = "none") # removing size legend 
 
-ggsave("Graphs/Sayers_Satellite_Circle_Body_Map.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Satellite_Circle_Body_Map.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_Body_Map.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_Body_Map.tiff", dpi = 1000, width = 10, height = 8)
 
 # Rectrice map with points
 MapData <- CollectiveData %>%
@@ -896,9 +896,9 @@ tailmap <- ggmap(satellitemap) +
     aspect.ratio = 1) +
   guides(size = "none") # removing size legend
 
-ggsave("Graphs/Sayers_Satellite_Circle_Tail_Map.jpg", dpi = 1000, width = 10, height = 8)
-ggsave("Graphs/Sayers_Satellite_Circle_Tail_Map.tiff", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_Tail_Map.jpg", dpi = 1000, width = 10, height = 8)
+ggsave("FinalGraphs/Sayers_Satellite_Circle_Tail_Map.tiff", dpi = 1000, width = 10, height = 8)
 
 ggarrange(bloodmap, bodymap, tailmap, labels = c("a)", "b)", "c)"), nrow = 3, ncol = 1)
-ggsave("Graphs/Sayers_Facet_Map_AllTissues.jpg", dpi = 1000, width = 10, height = 15)
-ggsave("Graphs/Sayers_Facet_Map_AllTissues.tiff", dpi = 1000, width = 10, height = 15)
+ggsave("FinalGraphs/Sayers_Facet_Map_AllTissues.jpg", dpi = 1000, width = 10, height = 15)
+ggsave("FinalGraphs/Sayers_Facet_Map_AllTissues.tiff", dpi = 1000, width = 10, height = 15)
