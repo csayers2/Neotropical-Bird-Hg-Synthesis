@@ -1484,6 +1484,9 @@ CollectiveData %>%
   
   
 #----------------------- DATA VISUALIZATION ------------------------------------
+
+# Script designed to produce only the relevant and publishable graphs
+
 library(tidyverse)
 
 # creating a data frame for modeling purposes
@@ -1513,13 +1516,13 @@ HgSamples <- CollectiveData %>%
 # OUTLIERS & NORMALITY OF RESPONSE VARIABLE ----------
 ggdensity(HgSamples$Hg_Concentration, xlab = "Hg Concentration (µg/g)") # some high outliers 
 ggqqplot(HgSamples$Hg_Concentration, ylab = "Hg Concentration (µg/g)") # tails stray from far from normal
-shapiro.test(HgSamples$Hg_Concentration) # W = 0.21815, p-value < 2.2e-16, not normal
+shapiro.test(HgSamples$Hg_Concentration) # W = 0.21811, p-value < 2.2e-16, not normal
 # log-transformation may be necessary for linear models
 
 # log-transformed data diagnostics
 ggdensity(HgSamples$lHg_Concentration, xlab = "ln[Hg Concentration (µg/g)]")
 ggqqplot(HgSamples$lHg_Concentration) # much better than before
-shapiro.test(HgSamples$lHg_Concentration) # W = 0.99371, p-value = 7.895e-06, not normal
+shapiro.test(HgSamples$lHg_Concentration) # W = 0.99349, p-value = 4.98e-06, not normal
 
 # Cleavland dotplot of raw data by Family
 ggplot(HgSamples, aes(x = Hg_Concentration, y = Family, color = Tissue_Type)) +
@@ -1668,3 +1671,4 @@ summary(model2)
 r.squaredGLMM(model2)
 anova(model2)
 rand(model2)
+
