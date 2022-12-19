@@ -1,6 +1,8 @@
-# Mercury exposure in Neotropical birds: A review and prospectus
+# Mercury in Neotropical birds: a synthesis and prospectus on 15 years of exposure data
+# Exposición al mercurio en aves Neotropicales: una síntesis y prospecto sobre 15 años de datos
 
-Christopher J. Sayers II (cjs347@cornell.edu), David C. Evers, Viviana Ruiz-Gutierrez, Evan Adams, Claudia M. Vega, Jessica Pisconte, Vania Tejeda, Kevin Regan, Oksana P. Lane, Timothy H. Tear, Abidas A. Ash, Reynold Cal, Stevan Reneau, Wilber Martínez, Gilroy Welch, Kayla Hartwell, Mario Teul, David Tzul, Wayne J. Arendt, Marvin A. Tórrez, Mrinalini Erkenswick Watsa, Gideon Erkenswick Watsa, Caroline E. Moore, Jacqueline Gerson, Victor Sánchez, Raúl Pérez Purizaca, Ari E. Martínez, Emily S. Bernhardt, Robert J. Taylor, Luis E. Fernandez
+
+Christopher J. Sayers II (csayers2@ucla.edu), David C. Evers, Viviana Ruiz-Gutierrez, Evan Adams, Claudia M. Vega, Jessica Pisconte, Vania Tejeda, Kevin Regan, Oksana P. Lane, Abidas A. Ash, Reynold Cal, Stevan Reneau, Wilber Martínez, Gilroy Welch, Kayla Hartwell, Mario Teul, David Tzul, Wayne J. Arendt, Marvin A. Tórrez, Mrinalini Watsa, Gideon Erkenswick, Caroline E. Moore, Jacqueline Gerson, Victor Sánchez, Raúl Pérez Purizaca, Helen Yurek, Mark Burton, Peggy L. Shrum, Finola F. Fogarty, Mathieu R. Charette, Ari E. Martínez, Emily S. Bernhardt, Robert J. Taylor, Timothy H. Tear, Luis E. Fernandez
 
 ## Abstract
 The monitoring of anthropogenic mercury (Hg) exposure to wildlife is severely neglected throughout the Neotropics. This lack of prioritization has limited our capacity to assess the impacts of ongoing primary forest degradation and artisanal gold mining, the largest polluting sector of environmental Hg in the world, on Neotropical biodiversity. Due to their global abundance, conspicuous behavior, and relative ease of detection, capture, tracking, and identification compared to other taxa, birds are highly cost-effective organisms for biodiversity and ecotoxicological monitoring in tropical, terrestrial systems. We summarize the largest dataset on Neotropical bird Hg concentrations: with nearly 1600 blood and feather samples from 282 species in 8 countries across Central America, South America, and the West Indies. Our findings align with those documented in temperate regions. We found high spatial variability in Hg exposure and elevated concentrations in bird species that occupy higher trophic positions — such as piscivores and invertivores. We show some of the first evidence that artisanal and small-scale gold mining (ASGM) has a strong spatial influence on bird Hg exposure, which signals an urgent need to quantify potential toxic impacts to Neotropical avian communities. To make future Hg biomonitoring efforts more efficient and comparable, we created an inclusive and equitable data-sharing platform that unites an international network of tropical ornithologists. By standardizing sampling methods among contributing monitoring programs and prioritizing key polluting zones and sentinel species, the Tropical Research for Avian Conservation and Ecotoxicology (TRACE) Initiative seeks to better inform conservation decision making through the understanding of the prevalence, variation, persistence, and distribution of anthropogenic Hg in tropical biomes, and how this contaminant impacts both resident and migratory bird populations.
@@ -10,13 +12,13 @@ El monitoreo de la contaminación antropogénica de mercurio (Hg) en animales si
 
 ### Author's Note/Instructions:
 
-Hello! And welcome to this open access repository for Sayers et al. (2022), submitted to Science of the Total Environment. Here you will find all of the materials necessary to reproduce the results published in the manuscript. Sayers_Main_Script.R contains all of the data transformation computations, as well as the computations to produce the linear mixed model set. Sayers_Graphs.R contains all of the code necessary to produce the published and supplemental figures.
+Hello! And welcome to this open access repository for Sayers et al. (2023), submitted to Ornithology. Here you will find all of the materials necessary to reproduce the results published in the manuscript. 1-Sayers-Main-Script.R contains all of the data transformation computations, as well as the computations to produce the linear mixed model set. 2-Sayers-Graphs.R contains all of the code necessary to produce the published and supplemental figures.
 
-If you have any issues, general questions, or would like to collaborate with the Tropical Research for Avian Conservation and Ecotoxicology (TRACE) Initiative, please feel free to email me at cjs347@cornell.edu or visit us at https://briwildlife.org/trace/. Enjoy!
+If you have any issues, general questions, or would like to collaborate with the Tropical Research for Avian Conservation and Ecotoxicology (TRACE) Initiative, please feel free to email me at csayers2@ucla.edu or visit us at https://briwildlife.org/trace/. Enjoy!
 
 Cheers,
 
 Chris Sayers
 
 
-![Sayers_Satellite_Circle_AllTissue_GAbstract](https://user-images.githubusercontent.com/51534958/151075405-bc854978-6a99-40c9-8d7e-652c3968ea6c.jpg)
+![GAbstract_Satellite_Circle_AllTissue](https://user-images.githubusercontent.com/51534958/208527394-781a0c2c-7db2-4f0e-8429-01c02bf3c512.jpg)
