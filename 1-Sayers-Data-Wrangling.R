@@ -15,7 +15,7 @@ select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
 # Cumulative TRACE database = BRI + SDZWA + Duke + CINCIA + Shrum data
-TRACEData <- read.csv("Spreadsheets/TRACE_Database_Oct312022.csv", na.strings = c("",".","NA")) %>% 
+TRACEData <- read.csv("TRACE_Database_Oct312022.csv", na.strings = c("",".","NA")) %>% 
   # removing captive birds from data set
   filter(Site_Name %nin% c("Belize Zoo", "Belize Raptor Center")) %>% 
   # following the assumption that 95% of THg in feathers is MeHg, we can effectively compare
@@ -60,7 +60,7 @@ TRACEData <- read.csv("Spreadsheets/TRACE_Database_Oct312022.csv", na.strings = 
 ##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2019 CLASSIFICATIONS #####
 
 # not sure why the .csv file isn't available yet
-taxa <- read_excel("Spreadsheets/eBird-Clements-v2022-integrated-checklist-October-2022.xlsx") %>%
+taxa <- read_excel("eBird-Clements-v2022-integrated-checklist-October-2022.xlsx") %>%
   rename(Species_Latin_Name = `scientific name`, Order = order, Family = family) %>% # renaming key column names
   select(Species_Latin_Name, Order, Family)
 
@@ -1107,7 +1107,7 @@ unique(unjoined$Species_Latin_Name)
 ##### CLASSIFYING SPECIES BY TROPHIC NICHE USING PIGOT et al. (2020) CRITERIA #####
 
 # Reading in Supplementary Dataset 1 from Pigot et al. (2020), which features trophic and foraging niches
-pigot <- read_excel("Spreadsheets/Pigot2020TrophicNiche.xlsx") %>%
+pigot <- read_excel("Pigot2020TrophicNiche.xlsx") %>%
   clean_names(case = "mixed") %>% # cleaning up column names
   mutate(Species_Latin_Name = str_replace(Binomial, "_", " ")) %>% # getting rid of underscores so we can merge datasets better
   select(Species_Latin_Name, Trophic_Level, Trophic_Niche, Foraging_Niche)
