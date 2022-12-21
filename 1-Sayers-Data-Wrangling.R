@@ -1,4 +1,7 @@
 
+# script designed to join various Hg databases and match species to appropriate
+# functional traits
+
 #---------------------- LOADING/MERGING THE DATA -------------------------------
 library(readxl)
 library(tidyverse)
@@ -11,32 +14,8 @@ library(janitor)
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-# Cumulative TRACE database = BRI + SDZWA + Duke + CINCIA data
-TRACEData <- read_excel("TRACE_Database_01192022.xlsx", sheet = "All Tropical Birds", 
-                        col_types = c("text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "numeric", "numeric",
-                                      "numeric", "date","numeric", "text", "numeric",
-                                      "numeric", "numeric","numeric", "numeric", "numeric",
-                                      "text", "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text",
-                                      "text", "text", "text", "text", "text", 
-                                      "text", "text", "text", "text", "text", 
-                                      "numeric", "numeric", "numeric", "numeric", "numeric", 
-                                      "numeric", "numeric", "numeric", "numeric", "numeric",
-                                      "numeric", "text", "text", "numeric", "numeric", 
-                                      "numeric", "numeric", "numeric", "text", "text",
-                                      "numeric", "numeric", "text", "text", "text",
-                                      "numeric", "numeric", "numeric", "numeric", "numeric",
-                                      "numeric", "numeric", "text", "numeric", "numeric",
-                                      "text", "numeric", "text", "numeric", "text",
-                                      "text", "text", "numeric", "numeric", "numeric",
-                                      "numeric", "text")) %>%
+# Cumulative TRACE database = BRI + SDZWA + Duke + CINCIA + Shrum data
+TRACEData <- read.csv("Spreadsheets/TRACE_Database_Oct312022.csv", na.strings = c("",".","NA")) %>% 
   # removing captive birds from data set
   filter(Site_Name %nin% c("Belize Zoo", "Belize Raptor Center")) %>% 
   # following the assumption that 95% of THg in feathers is MeHg, we can effectively compare
@@ -45,56 +24,60 @@ TRACEData <- read_excel("TRACE_Database_01192022.xlsx", sheet = "All Tropical Bi
   # joining flank THg and MeHg concentrations together
   unite("Flank_Hg_ppm", c(Flank_Hg_ppm, Flank_MeHg_ppm), na.rm = TRUE, remove = F, sep = "") %>%
   transform(Flank_Hg_ppm = as.numeric(Flank_Hg_ppm)) %>% # converting to numeric for later computation
-  # joining breast and flank concentrations together to create a body feather category
-  unite("Body_Hg_ppm", c(Breast_Hg_ppm, Flank_Hg_ppm), na.rm = TRUE, remove = F, sep = "") %>% 
+  # joining breast, flank, and back feather concentrations together to create a body feather category
+  unite("Body_Hg_ppm", c(Breast_Hg_ppm, Flank_Hg_ppm, Back_Hg_ppm), na.rm = TRUE, remove = F, sep = "") %>% 
   transform(Body_Hg_ppm = as.numeric(Body_Hg_ppm)) %>% # converting to numeric for later computation
   # excluding samples below the lower detection limit of the Hg analyzer
   mutate(Blood_Hg_ppm = ifelse(Blood_Hg_ppm < 0.001, NA, Blood_Hg_ppm),
          Tail_Hg_ppm = ifelse(Tail_Hg_ppm < 0.001, NA, Tail_Hg_ppm),
          Breast_Hg_ppm = ifelse(Breast_Hg_ppm < 0.001, NA, Breast_Hg_ppm),
          Flank_Hg_ppm = ifelse(Flank_Hg_ppm < 0.001, NA, Flank_Hg_ppm),
+         Back_Hg_ppm = ifelse(Back_Hg_ppm < 0.001, NA, Back_Hg_ppm),
          Body_Hg_ppm = ifelse(Body_Hg_ppm < 0.001, NA, Body_Hg_ppm)) %>%
-  # excluding historical feather samples from museums
+  # excluding sparse historical feather samples from museums
   filter(Year > 2006) %>%  
   # creating a seasonal column distinguishing wet and dry season by region
   # Belize wet season: June through December
   mutate(Season = if_else(Country == "Belize" & Month %in% c(6:12), "Wet",
-  # western Mexico wet season: June through October
-                  if_else(Country == "Mexico" & Month %in% c(6:10), "Wet",
-  # Puerto Rico wet season: May through December
-                  if_else(Country == "Puerto Rico" & Month %in% c(5:12), "Wet",
-  # Dominican Republic wet season: May through December
-                  if_else(Country == "Dominican Republic" & Month %in% c(5:12), "Wet",
-  # Nicaragua wet season: May through October                    
-                  if_else(Country == "Nicaragua" & Month %in% c(5:10), "Wet",
-  # Costa Rica wet season: May through October       
-                  if_else(Country == "Costa Rica" & Month %in% c(5:10), "Wet",
-  # Panama wet season: May through November      
-                  if_else(Country == "Panama" & Month %in% c(5:11), "Wet", 
-  # Madre de Dios, Peru wet season: October through March      
-                  if_else(Country == "Peru" & Month %in% c(1:3, 10:12), "Wet", "Dry")))))))))
+                          # western Mexico wet season: June through October
+                          if_else(Country == "Mexico" & Month %in% c(6:10), "Wet",
+                                  # Puerto Rico wet season: May through December
+                                  if_else(Country == "Puerto Rico" & Month %in% c(4:12), "Wet",
+                                          # Dominican Republic wet season: May through December
+                                          if_else(Country == "Dominican Republic" & Month %in% c(5:11), "Wet",
+                                                  # Nicaragua wet season: May through October                    
+                                                  if_else(Country == "Nicaragua" & Month %in% c(5:11), "Wet",
+                                                          # Costa Rica wet season: May through October       
+                                                          if_else(Country == "Costa Rica" & Month %in% c(5:11), "Wet",
+                                                                  # Panama wet season: May through November      
+                                                                  if_else(Country == "Panama" & Month %in% c(5:11), "Wet", 
+                                                                          # Madre de Dios, Peru wet season: October through April      
+                                                                          if_else(Country == "Peru" & Month %in% c(1:4, 10:12), "Wet",
+                                                                                  # treat all other seasons as "dry"
+                                                                                  "Dry")))))))))
 
 
 ##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2019 CLASSIFICATIONS #####
 
-taxa <- read_excel("Spreadsheets/eBird-Clements-v2019-integrated-checklist-August-2019.xlsx") %>%
+# not sure why the .csv file isn't available yet
+taxa <- read_excel("Spreadsheets/eBird-Clements-v2022-integrated-checklist-October-2022.xlsx") %>%
   rename(Species_Latin_Name = `scientific name`, Order = order, Family = family) %>% # renaming key column names
   select(Species_Latin_Name, Order, Family)
 
-# Which species were not joined due to taxonomic changes or subspecies since 2019?
+# Which species were not joined due to taxonomic changes?
 unjoined <- anti_join(TRACEData, taxa, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name) # This should be 0 -- It is!
 
 
 ##### CLASSIFYING SPECIES VIA HABITAT USING PARKER et al. (1996) CRITERIA #####
 
-adata <- read_csv("Parker_Stotz_Fitzpatrick_1996/adata.csv") %>% # neotropical breeder traits
+adata <- read.csv("Parker_Stotz_Fitzpatrick_1996/adata.csv") %>% # neotropical breeder traits
   mutate(Migratory_Status = "Resident")
-cdata <- read_csv("Parker_Stotz_Fitzpatrick_1996/cdata.csv") %>%  # neotropical migrant nonbreeding traits
+cdata <- read.csv("Parker_Stotz_Fitzpatrick_1996/cdata.csv") %>%  # neotropical migrant nonbreeding traits
   mutate(Migratory_Status = "Full migrant")
-ddata <- read_csv("Parker_Stotz_Fitzpatrick_1996/ddata.csv") %>% # neotropical migrant breeding traits
+ddata <- read.csv("Parker_Stotz_Fitzpatrick_1996/ddata.csv") %>% # neotropical migrant breeding traits
   mutate(Migratory_Status = "Partial migrant")
-edata <- read_csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") %>% # austral migrant traits
+edata <- read.csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") %>% # austral migrant traits
   mutate(Migratory_Status = "Austral migrant")
 
 # combing relevant data frames for our purposes (a, c, and e) by rows without duplicating column headings
@@ -116,11 +99,11 @@ parker <- full_join(cdata, ddata) %>%
 
 # Which species were not joined due to taxonomic changes or subspecies?
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
-unique(unjoined$Species_Latin_Name) # 107 taxa had issues
+unique(unjoined$Species_Latin_Name) # 120 taxa had issues
 
 # Manually changing Parker et al. dataset to accommodate for changed species names, lumps,
 # and splits since 1996 using Birds of the World taxonomic criteria. Only changing species
-# relevant to BRI + CINCIA (for right now at least). Jacob Socolar made excellent headway
+# relevant to this Hg study (for right now at least). Jacob Socolar made excellent headway
 # on this, but some of his changes are already outdated given recent taxonomic updates.
 # After pitching the project to the BOW team, they are currently discussing creating
 # a resource similar to the Parker criteria but for all bird species — so, this work
@@ -210,12 +193,24 @@ parker <- parker %>%
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Myrmeciza atrothorax", "Myrmophylax atrothorax", Species_Latin_Name)) %>% # Black-throated Antbird
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Otus watsonii", "Megascops watsonii", Species_Latin_Name)) %>% # Tawny-bellied Screech-Owl
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Otus choliba", "Megascops choliba", Species_Latin_Name)) %>% # Tropical Screech-Owl
-  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Pipra chloromeros", "Ceratopipra chloromeros", Species_Latin_Name)) # Round-tailed Manakin
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Pipra chloromeros", "Ceratopipra chloromeros", Species_Latin_Name)) %>% # Round-tailed Manakin
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Amazilia candida", "Chlorestes candida", Species_Latin_Name)) %>% # White-bellied Emerald
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Chlorostilbon canivetii", "Cynanthus canivetii", Species_Latin_Name)) %>% # Canivet's Emerald
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Glaucidium brasilianum", "Nannopterum brasilianum", Species_Latin_Name)) %>% # Neotropical Cormorant
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Hylocharis cyanus", "Chlorestes cyanus", Species_Latin_Name)) %>% # White-chinned Sapphire
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Pteroglossus beauharnaesii", "Pteroglossus beauharnaisii", Species_Latin_Name)) %>% # Curl-crested Aracari
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Tachyphonus luctuosus", "Loriotus luctuosus", Species_Latin_Name)) %>% # White-shouldered Tanager
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Amazilia lactea", "Chionomesa lactea", Species_Latin_Name)) %>% # Sapphire-spangled Emerald
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Veniliornis fumigatus", "Dryobates fumigatus", Species_Latin_Name)) %>% # Smoky-brown Woodpecker
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Icterus (dominicensis) prosthemelas", "Icterus prosthemelas", Species_Latin_Name)) %>% # Black-cowled Oriole
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Hylophilus decurtatus", "Pachysylvia decurtata", Species_Latin_Name)) %>% # Lesser Greenlet
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Leucopternis schistacea", "Buteogallus schistaceus", Species_Latin_Name)) %>% # Slate-colored Hawk
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Speotyto cunicularia", "Athene cunicularia", Species_Latin_Name)) # Burrowing Owl
 
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
-# We have 34 taxa that have been split/lumped since 1996 or were just excluded from the df
+# We have 35 taxa that have been split/lumped since 1996 or were just excluded from the df
 
 # Manually adding species to accommodate for splits/lumps information using BOW criteria
 # I am choosing to leave the original classifications in the df so that we can reference it later if necessary
@@ -1059,8 +1054,39 @@ parker <- parker %>%
           GAN = NA, LAN = NA, BSR = NA, MPL = NA, PAS = NA, MAH = NA, GCS = NA, CDH = NA, CHO = NA,    
           EPC = NA, STP = NA, NAN = NA, CAN = NA, SAN = NA, NSA = NA, TEP = NA, AMN = "Y", AMS = "Y",   
           CSA = NA, ATL = NA, PAM = NA, PAT = NA,
+          STATUS = NA) %>% # resident
+  add_row(ORDER = "PASSERIFORMES",
+          FAMILY = "TYRANNIDAE",
+          Species_Latin_Name = "Nesotriccus murina", # Southern Mouse-colored Tyrannulet, formerly known as Phaeomyias murina
+          GENUS = "Nesotriccus",
+          SPECIES = "murina",
+          NUMB = NA, # Parker classification number, irrelevant
+          SNST = "L", # Sensitivity
+          STRAT = "M", # Foraging Strata (Chris changed to M)
+          CNTAB = "LT", # Center of Abundance    
+          REL = "F/P", # Relative Abundance
+          MIN = 0, # Minimum Elevation, 0 = Lowlands
+          QMIN = NA, # Minimum elevation qualifier, ? = Uncertain value.
+          MAX = 2400, # Maximum Elevation (Chris changed to 2400)
+          QMAX = NA, # Maximum elevation qualifier
+          CP = 4, # Conservation Priority
+          RP = 3, # Research Priority
+          SUB = NA, # Subregions
+          MICRO = NA,
+          NHAB = 8, # Number of Habitats (Chris added N2, arid montane scrub, and removed F14, mangrove forest)
+          NZOO = 4, # Number of Zoogeographic Regions
+          HAB1 = "N1", HAB2 = "N2", HAB3 = "N4", HAB4 = "N14", HAB5 = "F7", HAB6 = "F8", HAB7 = "F3", #Habitat
+          F1 = NA, F2 = NA, F3 = "Y", F4 = NA, F5 = NA, F6 = NA, F7 = "Y", F8 = "Y",
+          F9 = NA, F10 = NA, F11 = NA, F12 = NA, F13 = NA, F14 = NA, F15 = NA,
+          N1 = "Y", N2 = "Y", N3 = NA, N4 = "Y", N5 = NA, N6 = NA, N7 = NA, N8 = NA,
+          N9 = NA, N10 = NA, N11 = NA, N12 = NA, N13 = NA, N14 = "Y",
+          A1 = NA, A2 = NA, A3 = NA, A4 = NA, A5 = NA, A6 = NA, A7 = NA, A8 = NA,
+          A9 = NA, A10 = NA, A11 = NA, A12 = NA,
+          GAN = NA, LAN = NA, BSR = NA, MPL = NA, PAS = NA, MAH = NA, GCS = NA, CDH = NA, CHO = NA,    
+          EPC = NA, STP = NA, NAN = NA, CAN = NA, SAN = NA, NSA = NA, TEP = NA, AMN = "Y", AMS = "Y",   
+          CSA = "Y", ATL = "Y", PAM = NA, PAT = NA,
           STATUS = NA) # resident
-  
+
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
@@ -1081,14 +1107,14 @@ unique(unjoined$Species_Latin_Name)
 ##### CLASSIFYING SPECIES BY TROPHIC NICHE USING PIGOT et al. (2020) CRITERIA #####
 
 # Reading in Supplementary Dataset 1 from Pigot et al. (2020), which features trophic and foraging niches
-pigot <- read_excel("Pigot2020TrophicNiche.xlsx") %>%
+pigot <- read_excel("Spreadsheets/Pigot2020TrophicNiche.xlsx") %>%
   clean_names(case = "mixed") %>% # cleaning up column names
   mutate(Species_Latin_Name = str_replace(Binomial, "_", " ")) %>% # getting rid of underscores so we can merge datasets better
   select(Species_Latin_Name, Trophic_Level, Trophic_Niche, Foraging_Niche)
 
-# Which species were not joined due to taxonomic changes or subspecies since 2018?
+# Which species were not joined due to taxonomic changes or subspecies since 2019?
 unjoined <- anti_join(TRACEData, pigot, by = "Species_Latin_Name")
-unique(unjoined$Species_Latin_Name) # We have 56 taxa that were unjoined
+unique(unjoined$Species_Latin_Name) # We have 67 taxa that were unjoined
 
 # New name is being assigned to old Pigot name
 pigot <- pigot %>%
@@ -1138,7 +1164,20 @@ pigot <- pigot %>%
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Thryothorus genibarbis", "Pheugopedius genibarbis", Species_Latin_Name)) %>% # Moustached Wren
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Oryzoborus atrirostris", "Sporophila atrirostris", Species_Latin_Name)) %>% # Black-billed Seed-Finch
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Pipra chloromeros", "Ceratopipra chloromeros", Species_Latin_Name)) %>% # Round-tailed Manakin
-  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Thryothorus leucotis", "Cantorchilus leucotis", Species_Latin_Name)) # Buff-breasted Wren
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Thryothorus leucotis", "Cantorchilus leucotis", Species_Latin_Name)) %>% # Buff-breasted Wren
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Amazilia candida", "Chlorestes candida", Species_Latin_Name)) %>% # White-bellied Emerald
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Chlorostilbon canivetii", "Cynanthus canivetii", Species_Latin_Name)) %>% # Canivet's Emerald
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Glaucidium brasilianum", "Nannopterum brasilianum", Species_Latin_Name)) %>% # Neotropical Cormorant
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Hylocharis cyanus", "Chlorestes cyanus", Species_Latin_Name)) %>% # White-chinned Sapphire
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Pteroglossus beauharnaesii", "Pteroglossus beauharnaisii", Species_Latin_Name)) %>% # Curl-crested Aracari
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Tachyphonus luctuosus", "Loriotus luctuosus", Species_Latin_Name)) %>% # White-shouldered Tanager
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Amazilia lactea", "Chionomesa lactea", Species_Latin_Name)) %>% # Sapphire-spangled Emerald
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Picoides fumigatus", "Dryobates fumigatus", Species_Latin_Name)) %>% # Smoky-brown Woodpecker
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Icterus (dominicensis) prosthemelas", "Icterus prosthemelas", Species_Latin_Name)) %>% # Black-cowled Oriole
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Hylophilus decurtatus", "Pachysylvia decurtata", Species_Latin_Name)) %>% # Lesser Greenlet
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Leucopternis schistaceus", "Buteogallus schistaceus", Species_Latin_Name)) %>% # Slate-colored Hawk
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Speotyto cunicularia", "Athene cunicularia", Species_Latin_Name)) %>% # Burrowing Owl
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Phaeomyias murina", "Nesotriccus murina", Species_Latin_Name)) # Southern Mouse-colored Tyrannulet
 
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, pigot, by = "Species_Latin_Name")
@@ -1207,7 +1246,26 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   # mending the unite() weirdness
   mutate(Family = na_if(Family, "")) %>% 
   select(-c(ORDER:NUMB)) %>% # Getting rid of superfluous information
-  # Now let's make the primary habitat types more readable
+  # simplifying primary habitat association for modeling purposes
+  # Aquatic, Forest, and Grassland/scrub
+  #mutate(Primary_Habitat = ifelse(HAB1 %in% c("F1", "F1E", "F2", "F3", "F3?", "F4", "F4E", "F5", "F6", "F7", "F7E", "F8",
+  #                                            "F9", "F10", "F10E", "F11", "F12", "F13", "F14", "F15", "F15E"), "Forest",
+  #                                                     ifelse(HAB1 %in% c("N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8",
+  #                                                                        "N9", "N10", "N11", "N12", "N13", "N14"), "Grassland/scrub",
+  #                                                            ifelse(HAB1 %in% c("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8",
+  #                                                                               "A9", "A10", "A11", "A12"), "Aquatic",
+  #                                                                   HAB1)))) %>% 
+  mutate(Primary_Habitat = ifelse(HAB1 %in% c("F1", "F1E", "F2", "F10",
+                                             "F10E", "F11", "F12", "F13", "F14"), "Lowland evergreen forest",
+                                  ifelse(HAB1 %in% c("F4", "F4E", "F5", "F6"), "Montane evergreen forest",
+                                         ifelse(HAB1 %in% c("F7", "F7E", "F9"), "Lowland deciduous forest",
+                                                ifelse(HAB1 %in% c("F3", "F3?", "F8", "F15", "F15E"), "Secondary forest", # river-edge, gallery, and true secondary
+                                                       ifelse(HAB1 %in% c("N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8",
+                                                                          "N9", "N10", "N11", "N12", "N13", "N14"), "Grassland/scrub",
+                                                              ifelse(HAB1 %in% c("A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8",
+                                                                                 "A9", "A10", "A11", "A12"), "Aquatic",
+                                                                     HAB1))))))) %>%
+  # Now let's make the species habitat types more readable
   mutate(HAB1 = ifelse(HAB1 %in% c("F1", "F1E"), "Tropical lowland evergreen forest", HAB1)) %>% 
   mutate(HAB1 = ifelse(HAB1 == "F2", "Flooded tropical evergreen forest", HAB1)) %>% 
   mutate(HAB1 = ifelse(HAB1 %in% c("F3", "F3?"), "River-edge forest", HAB1)) %>% 
@@ -1253,12 +1311,18 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   mutate(Migratory_Status = if_else(is.na(Migratory_Status), "Resident", Migratory_Status)) %>% 
   # excluding feather samples from migratory species because of molt uncertainty
   mutate(Tail_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
-  mutate(Body_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm))
+  mutate(Body_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>%
+  # renaming sites per CINCIA's temporary request
+  mutate(Site_Name = if_else(Site_Name == "Azul Mine", "Mining Site A", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "La Torre", "Reserva Nacional Tambopata", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "Mining Site B", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Mining Site C", Site_Name))
 
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
 
 # How many samples do we have and from what organizations
+# this total includes multiple tissue samples from the same individual
 CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
@@ -1279,6 +1343,7 @@ summary <- CollectiveData %>%
   view()
 
 # How many total samples do we have?
+# this total includes multiple tissue samples from the same individual
 sum(summary$n)
 
 # How many total sampled families do we have?
@@ -1303,6 +1368,26 @@ summary <- CollectiveData %>%
   view()
 nrow(summary)
 
+# How many total sampled sites do we have?
+summary <- CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+  select(Site_Name, Tissue_Type, Concentration) %>% 
+  filter(!is.na(Concentration), !is.na(Site_Name)) %>%
+  count(Site_Name) %>% 
+  view()
+nrow(summary)
+
+# How many total sampled stations do we have?
+summary <- CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+  select(Banding_Station_Name, Tissue_Type, Concentration) %>% 
+  filter(!is.na(Concentration), !is.na(Banding_Station_Name)) %>%
+  count(Banding_Station_Name) %>% 
+  view()
+nrow(summary)
+
 # How many samples do we have and for what tissues?
 summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
@@ -1314,14 +1399,14 @@ summary <- CollectiveData %>%
             n_Species = length(unique(Species_Common_Name)), n = n(),
             Mean = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
             Max = max(Concentration), CV = (SD/Mean)*100) %>% 
-  mutate_at(5:10, funs(round(., 3))) %>%
+  mutate_at(5:11, funs(round(., 3))) %>%
   mutate(Year_Range = if_else(Min_Year != Max_Year,
                               str_c(Min_Year, "—", Max_Year), as.character(Max_Year)),
          Mean = if_else(n > 1, str_c(Mean, " ± ", SD), as.character(Mean)),
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   ungroup() %>% 
-  mutate(Percent = (n/1605)*100) %>% 
+  mutate(Percent = (n/2176)*100) %>%
   view()
 
 # How many samples do we have and for what countries?
@@ -1346,7 +1431,7 @@ CollectiveData %>%
             n_Species = length(unique(Species_Common_Name)), n = n(),
             Mean = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
             Max = max(Concentration), CV = (SD/Mean)*100) %>% 
-  mutate_at(5:10, funs(round(., 3))) %>%
+  mutate_at(5:11, funs(round(., 3))) %>%
   mutate(Year_Range = if_else(Min_Year != Max_Year,
                               str_c(Min_Year, "—", Max_Year), as.character(Max_Year)),
          Mean = if_else(n > 1, str_c(Mean, " ± ", SD), as.character(Mean)),
@@ -1382,7 +1467,7 @@ CollectiveData %>%
   group_by(Order, Tissue_Type) %>%
   summarize(Country = unique(Country), Min_Year = min(Year), Max_Year = max(Year), n = n(),
             Mean = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
-            Max = max(Concentration), CV = (SD/Mean)*100) %>% 
+            Max = max(Concentration), CV = (SD/Mean)*100) %>%
   mutate_at(7:11, funs(round(., 3))) %>%
   mutate(Year_Range = if_else(Min_Year != Max_Year,
                               str_c(Min_Year, "—", Max_Year), as.character(Max_Year)),
@@ -1390,7 +1475,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("OrderHg.csv")
+  write.csv("Outputs/OrderHg.csv")
 
 # Creating a family Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1409,19 +1494,19 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("FamilyHg.csv")
+  write.csv("Outputs/FamilyHg.csv")
 
 # Creating a species Hg table displaying arithmetic mean and SD
 CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Order, Family, Species_Common_Name, Species_Latin_Name, Tissue_Type,
-          Country, Year, Concentration) %>% 
+         Country, Year, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
   group_by(Order, Family, Species_Common_Name, Species_Latin_Name, Tissue_Type) %>%
   summarize(Country = unique(Country), Min_Year = min(Year), Max_Year = max(Year), n = n(),
-            Mean = mean(Concentration), Mean2 = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
-            Max = max(Concentration), CV = (SD/Mean)*100) %>% 
+            Mean = mean(Concentration), SD = sd(Concentration), Min = min(Concentration),
+            Max = max(Concentration), CV = (SD/Mean)*100) %>%
   mutate_at(9:14, funs(round(., 3))) %>% 
   mutate(Year_Range = if_else(Min_Year != Max_Year,
                               str_c(Min_Year, "—", Max_Year), as.character(Max_Year)),
@@ -1429,7 +1514,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("SpeciesHg.csv")
+  write.csv("Outputs/SpeciesHg.csv")
 
 # Creating a trophic niche Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1438,7 +1523,7 @@ CollectiveData %>%
   select(Trophic_Niche, Species_Common_Name, Tissue_Type, Concentration, Country, Year) %>% 
   filter(!is.na(Concentration)) %>%
   group_by(Trophic_Niche, Tissue_Type) %>%
-  summarize(n_Species = length(unique(Species_Common_Name)), n = n(), Mean = mean(Concentration), Mean2 = mean(Concentration),
+  summarize(n_Species = length(unique(Species_Common_Name)), n = n(), Mean = mean(Concentration),
             SD = sd(Concentration), Min = min(Concentration), Max = max(Concentration), CV = (SD/Mean)*100,
             Country = unique(Country), Min_Year = min(Year), Max_Year = max(Year)) %>% 
   mutate_at(5:9, funs(round(., 3))) %>%
@@ -1448,15 +1533,15 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("TrophicHg.csv")
+  write.csv("Outputs/TrophicHg.csv")
 
 # Creating a primary habitat Hg table displaying arithmetic mean and SD
 CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Tail_Hg_ppm, Body_Hg_ppm),
-                names_to = "Tissue_Type", values_to = "Concentration") %>% 
-  select(HAB1, Species_Common_Name, Tissue_Type, Concentration, Country, Year) %>% 
-  filter(!is.na(HAB1), !is.na(Concentration)) %>%
-  group_by(HAB1, Tissue_Type) %>%
+               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+  select(Primary_Habitat, Species_Common_Name, Tissue_Type, Concentration, Country, Year) %>% 
+  filter(!is.na(Primary_Habitat), !is.na(Concentration)) %>%
+  group_by(Primary_Habitat, Tissue_Type) %>%
   summarize(n_Species = length(unique(Species_Common_Name)), n = n(), Mean = mean(Concentration),
             SD = sd(Concentration), Min = min(Concentration), Max = max(Concentration), CV = (SD/Mean)*100,
             Country = unique(Country), Min_Year = min(Year), Max_Year = max(Year)) %>% 
@@ -1467,7 +1552,9 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("HabitatHg.csv")
+  write.csv("Outputs/HabitatHg.csv")
+
+unique(CollectiveData$HAB1)
 
 # Creating species association table
 CollectiveData %>%
@@ -1480,195 +1567,4 @@ CollectiveData %>%
            HAB1, Migratory_Status) %>%
   summarize(n = n()) %>% # Consolidating to 1 row per species
   view() %>% 
-  write.csv("SpeciesClass.csv")
-  
-  
-#----------------------- DATA VISUALIZATION ------------------------------------
-
-# Script designed to produce only the relevant and publishable graphs
-
-library(tidyverse)
-
-# creating a data frame for modeling purposes
-HgSamples <- CollectiveData %>%
-  # excluding duplicate samples derived from the same individual
-  mutate(Tail_Hg_ppm = ifelse(!is.na(Blood_Hg_ppm) & !is.na(Body_Hg_ppm) & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
-  mutate(Tail_Hg_ppm = ifelse(!is.na(Blood_Hg_ppm) & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
-  mutate(Body_Hg_ppm = ifelse(!is.na(Blood_Hg_ppm) & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>% 
-  mutate(Body_Hg_ppm = ifelse(!is.na(Tail_Hg_ppm) & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>% 
-  # adding tissue type as a data field 
-  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Hg_Concentration") %>% 
-  # only including full species names
-  filter(!(str_detect(Species_Common_Name, " sp."))) %>%
-  # removing NA values in key variables so the models can run
-  filter(!is.na(Hg_Concentration), !is.na(Trophic_Niche), !is.na(HAB1),
-         !is.na(Migratory_Status), !is.na(Mining_Present_Yes_No), 
-         !is.na(Family)) %>%
-  # Creating new column with natural-log transformed THg concentrations
-  mutate(lHg_Concentration = log(Hg_Concentration)) %>% 
-  # Creating new column with date to capture annual trends
-  mutate(Date = make_date(Year, Month, Day),
-         Julian_Date = yday(Date))
-
-# much of the strategy below is from Zurr et al. (2010)  https://doi.org/10.1111/j.2041-210X.2009.00001.x
-
-# OUTLIERS & NORMALITY OF RESPONSE VARIABLE ----------
-ggdensity(HgSamples$Hg_Concentration, xlab = "Hg Concentration (µg/g)") # some high outliers 
-ggqqplot(HgSamples$Hg_Concentration, ylab = "Hg Concentration (µg/g)") # tails stray from far from normal
-shapiro.test(HgSamples$Hg_Concentration) # W = 0.21811, p-value < 2.2e-16, not normal
-# log-transformation may be necessary for linear models
-
-# log-transformed data diagnostics
-ggdensity(HgSamples$lHg_Concentration, xlab = "ln[Hg Concentration (µg/g)]")
-ggqqplot(HgSamples$lHg_Concentration) # much better than before
-shapiro.test(HgSamples$lHg_Concentration) # W = 0.99349, p-value = 4.98e-06, not normal
-
-# Cleavland dotplot of raw data by Family
-ggplot(HgSamples, aes(x = Hg_Concentration, y = Family, color = Tissue_Type)) +
-  geom_point() +
-  labs(x = "Hg Concentration (µg/g ww)", y = "Family")
-
-# Cleavland dotplot of natural-log transformed data, no apparent outliers anymore
-ggplot(HgSamples, aes(x = log(Hg_Concentration), y = Family, color = Tissue_Type)) +
-  geom_point() +
-  labs(x = "ln(Hg) Concentration (µg/g ww)", y = "Family")
-
-
-#--------------------- ANALYSIS + LINEAR MODELS --------------------------------
-library(ggpubr)
-library(MuMIn)
-library(lme4)
-library(usdm)
-library(lmerTest)
-
-# choosing the ideal random effect structure
-nullmodel1 <- lmer(log(Hg_Concentration) ~ (1 | SiteID) + (1 | Species_Common_Name) + (1 | Date), data = HgSamples, REML = F)
-nullmodel2 <- lmer(log(Hg_Concentration) ~ (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date), data = HgSamples, REML = F)
-nullmodel3 <- lmer(log(Hg_Concentration) ~ (1 | SiteID) + (1 | Family) + (1 | Date), data = HgSamples, REML = F)
-nullmodel4 <- lmer(log(Hg_Concentration) ~ (1 | Family/SiteID) + (1 | Date), data = HgSamples, REML = F)
-nullmodel5 <- lmer(log(Hg_Concentration) ~ (1 | Species_Common_Name/SiteID) + (1 | Date), data = HgSamples, REML = F)
-
-anova(nullmodel1, nullmodel2, nullmodel3, nullmodel4, nullmodel5)
-# nullmodel2 is a clear winner, so we will use this RE structure in the full model
-
-fullmodel <- lmer(log(Hg_Concentration) ~ 
-                    
-                    # Hg toxicokinetics
-                    Tissue_Type +
-                    
-                    # functional traits
-                    Trophic_Niche + HAB1 + Migratory_Status +
-                    
-                    # landscape traits
-                    Mining_Present_Yes_No +
-                    
-                    # crossed random effects
-                    (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
-                  
-                  data = HgSamples, REML = F)
-
-summary(fullmodel)
-r.squaredGLMM(fullmodel)
-anova(fullmodel)
-rand(fullmodel)
-
-# CHECKING MODEL ASSUMPTIONS -------------------------------------
-# Checking for homogeneity of variance & normality of residuals
-mean(residuals(fullmodel)) # very very close to 0
-
-library(ggResidpanel)
-resid_panel(fullmodel, plots = "all", type = NA, bins = 30,
-            smoother = T, qqline = T, qqbands = T, scale = 1,
-            theme = "bw", axis.text.size = 10, title.text.size = 12,
-            title.opt = TRUE, nrow = NULL)
-shapiro.test(residuals(fullmodel)) # not normal
-# residual plots look okay
-# normality plot has a few tail stragglers, but the rest looks good
-
-# Checking for normality of random effects
-ggqqplot(ranef(fullmodel)$SiteID[,1]) # few tail stragglers, but the rest looks okay
-shapiro.test(ranef(fullmodel)$SiteID[,1]) # we are normal
-
-# tails stray from normal
-ggqqplot(ranef(fullmodel)$Family[,1])
-shapiro.test(ranef(fullmodel)$Family[,1]) # we are normal
-
-# tails stray from normal
-ggqqplot(ranef(fullmodel)$Species_Common_Name[,1])
-shapiro.test(ranef(fullmodel)$Species_Common_Name[,1]) # we are not normal
-
-# tails stray from normal
-ggqqplot(ranef(fullmodel)$Date[,1])
-shapiro.test(ranef(fullmodel)$Date[,1]) # we are not normal
-
-# Checking for autocorrelation/independence
-library(lawstat)
-acf(HgSamples$Hg_Concentration) # raw data is autocorrelated
-acf(residuals(fullmodel)) # random effects variable corrects for this
-runs.test(residuals(fullmodel)) # we do not have autocorrelated data
-
-
-# CANDIDATE MODEL SET -----------------------------------------------
-library(AICcmodavg)
-library(lmerTest)
-
-fullmodel <- lmer(log(Hg_Concentration) ~ 
-                     
-                     # Hg toxicokinetics
-                     Tissue_Type +
-                     
-                     # functional traits
-                     Trophic_Niche + HAB1 + Migratory_Status +
-                     
-                     # landscape traits
-                     Mining_Present_Yes_No +
-                     
-                     # random effects
-                     (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
-                   
-                   data = HgSamples, REML = F)
-
-summary(fullmodel)
-r.squaredGLMM(fullmodel)
-anova(fullmodel)
-rand(fullmodel)
-
-options(na.action = "na.fail")
-# computes marginal and conditional R^2
-d.out <- dredge(fullmodel, extra = list("Rsq" = function(x){r.squaredGLMM(x)}))
-View(d.out)
-options(na.action = "na.omit")
-write.csv(d.out, "model_output.csv")
-
-#subset(d.out, delta < 2)
-#subset(d.out, cumsum(d.out$weight) <= .95)
-#
-## Model averaging for entire model set
-#modelavg <- model.avg(d.out)
-#summary(modelavg)
-#
-#confint(modelavg) # unconditional 95% CI
-#MuMIn::importance(modelavg)
-
-# 1st place model by a long-shot
-topmodel <- lmer(log(Hg_Concentration) ~ Trophic_Niche + Tissue_Type + Mining_Present_Yes_No +
-                   (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
-                 data = HgSamples, REML = F)
-
-summary(topmodel)
-r.squaredGLMM(topmodel)
-anova(topmodel)
-rand(topmodel)
-
-
-# 2nd place model
-model2 <- lmer(log(Hg_Concentration) ~ Trophic_Niche + Tissue_Type + Mining_Present_Yes_No +
-                 Migratory_Status + (1 | SiteID) + (1 | Family/Species_Common_Name) + (1 | Date),
-               data = HgSamples, REML = F)
-
-summary(model2)
-r.squaredGLMM(model2)
-anova(model2)
-rand(model2)
-
+  write.csv("Outputs/SpeciesClass.csv")
