@@ -11,7 +11,7 @@ library(car)
 library(DHARMa)
 library(lawstat)
 library(emmeans)
-library(multcompView)
+library(multcomp)
 
 # creating a data frame for modeling purposes
 HgSamples <- CollectiveData %>%
