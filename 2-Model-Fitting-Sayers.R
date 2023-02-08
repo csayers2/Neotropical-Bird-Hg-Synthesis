@@ -1,6 +1,6 @@
 
 # Script designed to create and compare linear mixed-effects models
-# Requires objects from 1-Sayers_Data-Wrangling.R
+# Requires objects from 1-Data-Wrangling-Sayers.R
 
 library(tidyverse)
 library(ggpubr)
