@@ -1,6 +1,6 @@
 
 # Script designed to produce graphs featured in publication and annex
-# Requires objects from 1-Sayers-Data-Wrangling.R and 2-Sayers-Model-Fitting.R
+# Requires objects from 1-Data-Wrangling-Sayers.R and 2-Model-Fitting-Sayers.R
 
 library(tidyverse)
 library(ggplot2)
