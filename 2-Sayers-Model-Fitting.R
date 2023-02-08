@@ -104,20 +104,31 @@ as.data.frame(confint(fullmodel)) %>%
 performance::r2(fullmodel)
 car::Anova(fullmodel, type = 3)
 
-
 # CHECKING MODEL ASSUMPTIONS -------------------------------------
 # Checking for homogeneity of variance & normality of residuals
 mean(residuals(fullmodel)) # VERY close to 0
 
+#library(lmerTest)
 #library(ggResidpanel)
-#resid_panel(fullmodel, plots = "all", type = NA, bins = 30,
+#fullmodel1 <- lmer(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
+#                    Primary_Habitat + Migratory_Status + Mining_Present_Yes_No +
+#                    (1 | Site_Name/Banding_Station_Name) + (1 | Family/Species_Common_Name) + (1 | Year),
+#                  data = HgSamples, REML = F)
+#
+#resid_panel(fullmodel1, plots = "all", type = NA, bins = 30,
 #            smoother = T, qqline = T, qqbands = T, scale = 1,
 #            theme = "bw", axis.text.size = 10, title.text.size = 12,
 #            title.opt = TRUE, nrow = NULL)
+## residual plots look great
 
-simulateResiduals(fullmodel, plot = T)
+simulateResiduals(fullmodel, plot = T, refit = F, use.u = T)
 shapiro.test(residuals(fullmodel)) # W = 0.98877, p-value = 1.26e-10, not normal
 # residual plots look okay
+
+# Checking for data points with high leverage
+source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
+inf <- influence_mixed(fullmodel)
+infIndexPlot(inf)
 
 # Checking for normality of random effects
 rand <- as.data.frame(ranef(fullmodel)) %>% 
@@ -225,7 +236,6 @@ boxplot(log(Hg_Concentration) ~ Mining_Present_Yes_No, HgSamples)
 boxplot(log(Hg_Concentration) ~ Year, HgSamples)
 
 
-
 # TEMPORAL MODEL -----------------------------------------------
 
 BloodHgSamples <- HgSamples %>% 
@@ -253,15 +263,26 @@ car::Anova(temporalmodel, type = 3)
 # Checking for homogeneity of variance & normality of residuals
 mean(residuals(temporalmodel)) # VERY close to 0
 
+#library(lmerTest)
 #library(ggResidpanel)
-#resid_panel(temporalmodel, plots = "all", type = NA, bins = 30,
+#temporalmodel1 <- lmer(log(Hg_Concentration) ~ Season + (1 | Site_Name/Banding_Station_Name)
+#                         + (1 | Family/Species_Common_Name) + (1 | Year),
+#                         data = BloodHgSamples, REML = F)
+#
+#resid_panel(temporalmodel1, plots = "all", type = NA, bins = 30,
 #            smoother = T, qqline = T, qqbands = T, scale = 1,
 #            theme = "bw", axis.text.size = 10, title.text.size = 12,
 #            title.opt = TRUE, nrow = NULL)
+## residual plots look great
 
-simulateResiduals(temporalmodel, plot = T)
+simulateResiduals(temporalmodel, plot = T, refit = F, use.u = T)
 shapiro.test(residuals(temporalmodel)) # W = 0.98163, p-value = 5.512e-09, not normal
 # residual plots look okay
+
+# Checking for data points with high leverage
+source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
+inf <- influence_mixed(temporalmodel)
+infIndexPlot(inf)
 
 # Checking for normality of random effects
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
@@ -342,6 +363,3 @@ car::Anova(temporalmodel, type = 3)
 # computing post-hoc comparisons to determine significant differences among the modeled means
 emmeans(temporalmodel, "Season", type = "response") %>% 
   cld(Letter = "abcdefg")
-
-boxplot(log(Hg_Concentration) ~ Season, BloodHgSamples)
-
