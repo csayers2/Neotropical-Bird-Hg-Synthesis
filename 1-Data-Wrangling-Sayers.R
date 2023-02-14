@@ -3,7 +3,6 @@
 # functional traits
 
 #---------------------- LOADING/MERGING THE DATA -------------------------------
-library(readxl)
 library(tidyverse)
 library(ggplot2)
 library(ggpubr)
