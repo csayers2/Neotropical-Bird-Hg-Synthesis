@@ -14,7 +14,7 @@ select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
 # Cumulative TRACE database = BRI + SDZWA + Duke + CINCIA + Shrum data
-TRACEData <- read.csv("TRACE_Database_Oct312022.csv", na.strings = c("",".","NA")) %>% 
+TRACEData <- read.csv("TRACE_Database_26Jul2023.csv", na.strings = c("",".","NA")) %>% 
   # removing captive birds from data set
   filter(Site_Name %nin% c("Belize Zoo", "Belize Raptor Center")) %>% 
   # following the assumption that 95% of THg in feathers is MeHg, we can effectively compare
@@ -59,8 +59,8 @@ TRACEData <- read.csv("TRACE_Database_Oct312022.csv", na.strings = c("",".","NA"
 ##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2019 CLASSIFICATIONS #####
 
 # not sure why the .csv file isn't available yet
-taxa <- read_excel("eBird-Clements-v2022-integrated-checklist-October-2022.xlsx") %>%
-  rename(Species_Latin_Name = `scientific name`, Order = order, Family = family) %>% # renaming key column names
+taxa <- read.csv("NEW_eBird-Clements-v2022-integrated-checklist-October-2022.csv") %>%
+  rename(Species_Latin_Name = SCI_NAME, Order = ORDER1, Family = FAMILY) %>% # renaming key column names
   select(Species_Latin_Name, Order, Family)
 
 # Which species were not joined due to taxonomic changes?
@@ -98,7 +98,7 @@ parker <- full_join(cdata, ddata) %>%
 
 # Which species were not joined due to taxonomic changes or subspecies?
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
-unique(unjoined$Species_Latin_Name) # 120 taxa had issues
+unique(unjoined$Species_Latin_Name) # 123 taxa had issues
 
 # Manually changing Parker et al. dataset to accommodate for changed species names, lumps,
 # and splits since 1996 using Birds of the World taxonomic criteria. Only changing species
