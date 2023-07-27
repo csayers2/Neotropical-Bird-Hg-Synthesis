@@ -17,30 +17,27 @@ library(janitor)
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-# Cumulative TRACE database = BRI + SDZWA + Duke + CINCIA + Shrum data
-TRACEData <- read.csv("TRACE_Database_26Jul2023.csv", na.strings = c("",".","NA")) %>% 
+TRACEData <- read.csv("TRACE_Database_26Jul2023.csv", na.strings = c("",".","NA")) %>%
   # removing captive birds from data set
   filter(Site_Name %nin% c("Belize Zoo", "Belize Raptor Center")) %>% 
+  # excluding sparse historical feather samples from museums
+  filter(Year > 2006) %>%  
   # following the assumption that 95% of THg in feathers is MeHg, we can effectively compare
   # MeHg concentrations with THg concentrations
   mutate(Flank_MeHg_ppm = Flank_MeHg_ppb / 1000) %>% # converting from ppb to ppm
   # joining flank THg and MeHg concentrations together
   unite("Flank_Hg_ppm", c(Flank_Hg_ppm, Flank_MeHg_ppm), na.rm = TRUE, remove = F, sep = "") %>%
   transform(Flank_Hg_ppm = as.numeric(Flank_Hg_ppm)) %>% # converting to numeric for later computation
-  # joining breast, flank, and back feather concentrations together to create a body feather category
-  unite("Body_Hg_ppm", c(Breast_Hg_ppm, Flank_Hg_ppm, Back_Hg_ppm), na.rm = TRUE, remove = F, sep = "") %>% 
-  transform(Body_Hg_ppm = as.numeric(Body_Hg_ppm)) %>% # converting to numeric for later computation
-  
   # transforming samples below the lower detection limit of the Hg analyzer
   mutate(Blood_Hg_ppm = ifelse(Blood_Hg_ppm <= 0.001, 0.001, Blood_Hg_ppm),
          Tail_Hg_ppm = ifelse(Tail_Hg_ppm <= 0.001, 0.001, Tail_Hg_ppm),
          Breast_Hg_ppm = ifelse(Breast_Hg_ppm <= 0.001, 0.001, Breast_Hg_ppm),
          Flank_Hg_ppm = ifelse(Flank_Hg_ppm <= 0.001, 0.001, Flank_Hg_ppm),
-         Back_Hg_ppm = ifelse(Back_Hg_ppm <= 0.001, 0.001, Back_Hg_ppm),
-         Body_Hg_ppm = ifelse(Body_Hg_ppm <= 0.001, 0.001, Body_Hg_ppm)) %>%
-  
-  # excluding sparse historical feather samples from museums
-  filter(Year > 2006) %>%  
+         Back_Hg_ppm = ifelse(Back_Hg_ppm <= 0.001, 0.001, Back_Hg_ppm)) %>% 
+  # creating a "body feather" category from flank, breast, and back feathers
+  mutate(Body_Hg_ppm = ifelse(is.na(Flank_Hg_ppm) & !is.na(Breast_Hg_ppm) & !is.na(Back_Hg_ppm) |
+                              is.na(Flank_Hg_ppm) & !is.na(Breast_Hg_ppm) & is.na(Back_Hg_ppm), Breast_Hg_ppm,
+                                ifelse(is.na(Flank_Hg_ppm) & is.na(Breast_Hg_ppm) & !is.na(Back_Hg_ppm), Back_Hg_ppm, Flank_Hg_ppm))) %>% 
   # creating a seasonal column distinguishing wet and dry season by region
   # Belize wet season: June through December
   mutate(Season = if_else(Country == "Belize" & Month %in% c(6:12), "Wet",
@@ -76,13 +73,13 @@ unique(unjoined$Species_Latin_Name) # This should be 0 -- It is!
 
 ##### CLASSIFYING SPECIES VIA HABITAT USING PARKER et al. (1996) CRITERIA #####
 
-adata <- read.csv("Parker_Stotz_Fitzpatrick_1996/adata.csv") %>% # neotropical breeder traits
+adata <- read.csv("Parker_Stotz_Fitzpatrick_1996/adata.csv") %>% # Neotropical breeder traits
   mutate(Migratory_Status = "Resident")
-cdata <- read.csv("Parker_Stotz_Fitzpatrick_1996/cdata.csv") %>%  # neotropical migrant nonbreeding traits
+cdata <- read.csv("Parker_Stotz_Fitzpatrick_1996/cdata.csv") %>%  # Neotropical migrant nonbreeding traits
   mutate(Migratory_Status = "Full migrant")
-ddata <- read.csv("Parker_Stotz_Fitzpatrick_1996/ddata.csv") %>% # neotropical migrant breeding traits
+ddata <- read.csv("Parker_Stotz_Fitzpatrick_1996/ddata.csv") %>% # Neotropical migrant breeding traits
   mutate(Migratory_Status = "Partial migrant")
-edata <- read.csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") %>% # austral migrant traits
+edata <- read.csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") %>% # Austral migrant traits
   mutate(Migratory_Status = "Austral migrant")
 
 # combing relevant data frames for our purposes (a, c, and e) by rows without duplicating column headings
@@ -1338,6 +1335,15 @@ CollectiveData %>%
   mutate(Percent = (n/sum(n))*100) %>% 
   view()
 
+# How many total sampled years do we have?
+summary <- CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+  select(Year, Tissue_Type, Concentration) %>% 
+  filter(!is.na(Concentration)) %>%
+  count(Year) %>% 
+  view()
+
 # How many total sampled orders do we have?
 summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
@@ -1347,7 +1353,7 @@ summary <- CollectiveData %>%
   count(Order) %>% 
   view()
 
-# How many total samples do we have?
+# How many total sampled individuals do we have?
 # this total includes multiple tissue samples from the same individual
 sum(summary$n)
 
@@ -1365,11 +1371,11 @@ nrow(summary)
 summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
-  select(Species_Common_Name, Tissue_Type, Concentration) %>% 
+  select(Species_Latin_Name, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
   # only including full species names
-  filter(!(str_detect(Species_Common_Name, " sp."))) %>% 
-  count(Species_Common_Name) %>% 
+  filter(!(str_detect(Species_Latin_Name, " sp."))) %>% 
+  count(Species_Latin_Name) %>% 
   view()
 nrow(summary)
 
