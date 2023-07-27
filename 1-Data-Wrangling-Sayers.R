@@ -1,9 +1,13 @@
+# Chris Sayers
+# Last updated: July 27, 2023
 
-# script designed to join various Hg databases and match species to appropriate
+
+# Script designed to join various Hg databases and match species to appropriate
 # functional traits
 
 #---------------------- LOADING/MERGING THE DATA -------------------------------
 library(tidyverse)
+library(readxl)
 library(ggplot2)
 library(ggpubr)
 library(lubridate)
@@ -26,13 +30,15 @@ TRACEData <- read.csv("TRACE_Database_26Jul2023.csv", na.strings = c("",".","NA"
   # joining breast, flank, and back feather concentrations together to create a body feather category
   unite("Body_Hg_ppm", c(Breast_Hg_ppm, Flank_Hg_ppm, Back_Hg_ppm), na.rm = TRUE, remove = F, sep = "") %>% 
   transform(Body_Hg_ppm = as.numeric(Body_Hg_ppm)) %>% # converting to numeric for later computation
-  # excluding samples below the lower detection limit of the Hg analyzer
-  mutate(Blood_Hg_ppm = ifelse(Blood_Hg_ppm < 0.001, NA, Blood_Hg_ppm),
-         Tail_Hg_ppm = ifelse(Tail_Hg_ppm < 0.001, NA, Tail_Hg_ppm),
-         Breast_Hg_ppm = ifelse(Breast_Hg_ppm < 0.001, NA, Breast_Hg_ppm),
-         Flank_Hg_ppm = ifelse(Flank_Hg_ppm < 0.001, NA, Flank_Hg_ppm),
-         Back_Hg_ppm = ifelse(Back_Hg_ppm < 0.001, NA, Back_Hg_ppm),
-         Body_Hg_ppm = ifelse(Body_Hg_ppm < 0.001, NA, Body_Hg_ppm)) %>%
+  
+  # transforming samples below the lower detection limit of the Hg analyzer
+  mutate(Blood_Hg_ppm = ifelse(Blood_Hg_ppm <= 0.001, 0.001, Blood_Hg_ppm),
+         Tail_Hg_ppm = ifelse(Tail_Hg_ppm <= 0.001, 0.001, Tail_Hg_ppm),
+         Breast_Hg_ppm = ifelse(Breast_Hg_ppm <= 0.001, 0.001, Breast_Hg_ppm),
+         Flank_Hg_ppm = ifelse(Flank_Hg_ppm <= 0.001, 0.001, Flank_Hg_ppm),
+         Back_Hg_ppm = ifelse(Back_Hg_ppm <= 0.001, 0.001, Back_Hg_ppm),
+         Body_Hg_ppm = ifelse(Body_Hg_ppm <= 0.001, 0.001, Body_Hg_ppm)) %>%
+  
   # excluding sparse historical feather samples from museums
   filter(Year > 2006) %>%  
   # creating a seasonal column distinguishing wet and dry season by region
@@ -100,7 +106,7 @@ parker <- full_join(cdata, ddata) %>%
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name) # 123 taxa had issues
 
-# Manually changing Parker et al. dataset to accommodate for changed species names, lumps,
+# Manually changing Parker et al. dataset to accommodate for genera/species changes, lumps,
 # and splits since 1996 using Birds of the World taxonomic criteria. Only changing species
 # relevant to this Hg study (for right now at least). Jacob Socolar made excellent headway
 # on this, but some of his changes are already outdated given recent taxonomic updates.
@@ -204,8 +210,11 @@ parker <- parker %>%
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Icterus (dominicensis) prosthemelas", "Icterus prosthemelas", Species_Latin_Name)) %>% # Black-cowled Oriole
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Hylophilus decurtatus", "Pachysylvia decurtata", Species_Latin_Name)) %>% # Lesser Greenlet
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Leucopternis schistacea", "Buteogallus schistaceus", Species_Latin_Name)) %>% # Slate-colored Hawk
-  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Speotyto cunicularia", "Athene cunicularia", Species_Latin_Name)) # Burrowing Owl
-
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Speotyto cunicularia", "Athene cunicularia", Species_Latin_Name)) %>% # Burrowing Owl
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Fluvicola (pica) pica", "Fluvicola pica", Species_Latin_Name)) %>% # Pied Water-Tyrant
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Certhiaxis cinnamomea", "Certhiaxis cinnamomeus", Species_Latin_Name)) %>% # Yellow-chinned Spinetail
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Todirostrum sylvia", "Poecilotriccus sylvia", Species_Latin_Name)) # Slate-headed Tody-Flycatcher
+  
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
@@ -1091,7 +1100,7 @@ unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
 
 # Missing species that still need to be added:
-# This not an immediate priority as of 1/10/22 because these species don't have Hg samples
+# This not an immediate priority because these species don't have Hg samples
 # Lonchura malacca - Tricolored Munia
 # Psittacara chloropterus - Hispaniolan Parakeet
 
@@ -1241,9 +1250,6 @@ unique(unjoined$Species_Latin_Name) # Should be 0 — it is!
 CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   left_join(pigot, by = "Species_Latin_Name") %>%
   left_join(parker, by = "Species_Latin_Name") %>%
-  unite("Family", c(Family.x, Family.y), na.rm = T, remove = T, sep = "") %>%
-  # mending the unite() weirdness
-  mutate(Family = na_if(Family, "")) %>% 
   select(-c(ORDER:NUMB)) %>% # Getting rid of superfluous information
   # simplifying primary habitat association for modeling purposes
   # Aquatic, Forest, and Grassland/scrub
@@ -1312,10 +1318,10 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   mutate(Tail_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
   mutate(Body_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>%
   # renaming sites per CINCIA's temporary request
-  mutate(Site_Name = if_else(Site_Name == "Azul Mine", "Mining Site A", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "La Torre", "Reserva Nacional Tambopata", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "Mining Site B", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Mining Site C", Site_Name))
+  mutate(Site_Name = if_else(Site_Name == "Azul Mine", "Reserva Nacional Tambopata - Azul", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "La Torre", "Reserva Nacional Tambopata - La Torre", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "Laberinto", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Inambari", Site_Name))
 
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
