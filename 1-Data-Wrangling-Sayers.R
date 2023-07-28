@@ -1,5 +1,5 @@
 # Chris Sayers
-# Last updated: July 27, 2023
+# Last updated: July 28, 2023
 
 
 # Script designed to join various Hg databases and match species to appropriate
@@ -17,7 +17,7 @@ library(janitor)
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-TRACEData <- read.csv("TRACE_Database_26Jul2023.csv", na.strings = c("",".","NA")) %>%
+TRACEData <- read.csv("TRACE_Database_28Jul2023.csv", na.strings = c("",".","NA")) %>%
   # creating unique identifier codes for each individual, since we have
   # duplicate banding codes that are not recaptures
   mutate(Band_Num = str_c(Species_Latin_Name, "-", Band_Num), as.character(Band_Num)) %>% 
@@ -1326,7 +1326,7 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
 
-# How many samples do we have and from what organizations
+# How many samples do we have and from what organizations?
 # this total includes multiple tissue samples from the same individual
 CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
@@ -1362,9 +1362,7 @@ sum(summary$n)
 
 # How many unique individuals do we have?
 summary <- CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>% 
-  filter(!is.na(Concentration))
+  filter(!is.na(Blood_Hg_ppm) | !is.na(Body_Hg_ppm) | !is.na(Tail_Hg_ppm))
 length(unique(summary$Band_Num))
 
 # How many total sampled families do we have?
