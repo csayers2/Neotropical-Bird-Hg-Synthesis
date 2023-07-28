@@ -21,13 +21,17 @@ library(ggview)
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-# 1st place model functional trait from model selection
+# 1st place models from model selection
 topFTmodel <- glmmTMB(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
                         Primary_Habitat + Mining_Present_Yes_No + 
                         (1 | Site_Name/Banding_Station_Name) +
                         (1 | Family/Species_Latin_Name/Band_Num) + (1 | Year),
                       data = HgSamples, family = "gaussian", REML = F)
 
+temporalmodel <- glmmTMB(log(Hg_Concentration) ~ Season +
+                           (1 | Site_Name/Banding_Station_Name) +
+                           (1 | Family/Species_Common_Name/Band_Num) + (1 | Year),
+                         data = BloodHgSamples, family = "gaussian", REML = F)
 # PREDICTED TROPHIC NICHE x ASGM ----------------------------------------------
 
 # calculating tissue sample sizes for y axis
@@ -405,6 +409,144 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
 ggsave("Publication-Figures/Predicted_Season_AllTissues_Hist.jpg",
        dpi = 1200, width = 8, height = 6)
 
+# PREDICTED FAMILY x SEASON -----------------------------------------------------
+
+BloodHgSamples <- HgSamples %>% 
+  filter(Tissue_Type == "Blood_Hg_ppm")
+
+# calculating tissue sample sizes for y axis
+ss <- BloodHgSamples %>%
+  group_by(Family) %>%
+  summarize(n = n()) %>%
+  mutate(Family.s = str_c(Family, "\n(n = ", n, ")"))
+
+# calculating predicted Hg values with top model structure
+# type = "random" gives prediction intervals rather than confidence intervals
+pr <- ggpredict(temporalmodel, terms = c("Family", "Season"),
+                type = "random", back.transform = T) %>%
+  rename(Family = x, Season = group) %>%
+  left_join(ss, by = "Family") %>% 
+  # this function is critical to order the facets properly
+  transform(Season = factor(Season, levels = c("Wet", "Dry"),
+                            labels = c("Wet", "Dry"))) %>% 
+  # ordering the levels based on maximum predicted mean across tissue types
+  group_by(Family) %>% 
+  mutate(max_predicted = max(predicted)) %>% 
+  #group_by(Season) %>% 
+  #mutate(spacing = min(conf.low)/2)
+  group_by(Season) %>% 
+  mutate(spacing = max(conf.high) * 2)
+
+# create final data frame with raw data and predicted means to plot
+df <- BloodHgSamples %>% 
+  # this function is critical to order the facets properly
+  transform(Season = factor(Season, levels = c("Wet", "Dry"),
+                            labels = c("Wet", "Dry"))) %>%  
+  full_join(pr, by = c("Family", "Season")) %>% 
+  filter(n > 24)
+
+ggplot() +
+  geom_point(data = df, mapping = aes(x = Hg_Concentration, y = reorder(Family.s, max_predicted),
+                                      fill = Season),
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.6),
+             color = "#E41A1C", alpha = 0.4, size = 2) +
+  geom_pointrange(data = df, aes(x = predicted, y = reorder(Family.s, max_predicted),
+                                 xmin = conf.low, xmax = conf.high, shape = Season),
+                  position = position_dodge(0.6), size = 0.6, linewidth = 0.6) +
+  labs(x = "Predicted THg (µg/g)", y = "Family (n ≥ 25)") +
+  scale_x_continuous(expand = c(0.1, 0),
+                     trans = "log",
+                     breaks = c(0, 0.001, 0.01, 0.1, 1, 10, 75),
+                     labels = c("0", "0.001", "0.01", "0.1", "1", "10", "75")) + 
+  scale_shape_manual(limits = c("Dry", "Wet"), values = c(17, 16)) +
+  scale_fill_discrete(guide = "none") +
+  theme_classic(base_size = 14) +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        axis.text.x = element_text(hjust = 0.5),
+        axis.text.y = element_text(hjust = 1),
+        legend.title = element_blank(),
+        legend.position = "right",
+        strip.background = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"),
+        aspect.ratio = 1)
+
+ggview(device = "jpeg", units = "in", dpi = 1200, width = 10, height = 6)
+
+ggsave("Publication-Figures/Predicted_FamilyxSeason_Blood_Hist.jpg",
+       dpi = 1200, width = 10, height = 6)
+
+# PREDICTED SITE x SEASON -----------------------------------------------------
+
+# calculating tissue sample sizes for y axis
+ss <- HgSamples %>% 
+  filter(Tissue_Type == "Blood_Hg_ppm") %>% 
+  mutate(Site_Name2 = str_c(Site_Name, ", ", Country)) %>%
+  mutate(Site_Name2 = if_else(Mining_Present_Yes_No == "Yes", str_c("* ", Site_Name2), Site_Name2)) %>% 
+  group_by(Site_Name, Site_Name2) %>%
+  summarize(n = n()) %>%
+  mutate(Site_Name.s = str_c(Site_Name2, "\n(n = ", n, ")"))
+
+# calculating predicted Hg values with top model structure
+# type = "random" gives prediction intervals rather than confidence intervals
+pr <- ggpredict(temporalmodel, terms = c("Site_Name", "Season"),
+                type = "random", back.transform = T) %>%
+  rename(Site_Name = x, Season = group) %>%
+  left_join(ss, by = "Site_Name") %>% 
+  # this function is critical to order the facets properly
+  transform(Season = factor(Season, levels = c("Wet", "Dry"),
+                            labels = c("Wet", "Dry"))) %>% 
+  # ordering the levels based on maximum predicted mean across tissue types
+  group_by(Site_Name) %>% 
+  mutate(max_predicted = max(predicted)) %>% 
+  #group_by(Season) %>% 
+  #mutate(spacing = min(conf.low)/2)
+  group_by(Season) %>% 
+  mutate(spacing = max(conf.high) * 2)
+
+# create final data frame with raw data and predicted means to plot
+df <- BloodHgSamples %>% 
+  # this function is critical to order the facets properly
+  transform(Season = factor(Season, levels = c("Wet", "Dry"),
+                            labels = c("Wet", "Dry"))) %>%  
+  full_join(pr, by = c("Site_Name", "Season")) %>% 
+  filter(n > 25)
+
+ggplot() +
+  geom_point(data = df, mapping = aes(x = Hg_Concentration, y = reorder(Site_Name.s, max_predicted),
+                                      fill = Season),
+             position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.6),
+             color = "#E41A1C", alpha = 0.4, size = 2) +
+  geom_pointrange(data = df, aes(x = predicted, y = reorder(Site_Name.s, max_predicted),
+                                 xmin = conf.low, xmax = conf.high, shape = Season),
+                  position = position_dodge(0.6), size = 0.6, linewidth = 0.6) +
+  labs(x = "Predicted THg (µg/g)", y = "Site (n ≥ 25)") +
+  scale_x_continuous(expand = c(0.1, 0),
+                     trans = "log",
+                     breaks = c(0, 0.001, 0.01, 0.1, 1, 10, 75),
+                     labels = c("0", "0.001", "0.01", "0.1", "1", "10", "75")) + 
+  scale_shape_manual(limits = c("Dry", "Wet"), values = c(17, 16)) +
+  scale_fill_discrete(guide = "none") +
+  theme_classic(base_size = 16) +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        axis.text.x = element_text(hjust = 0.5),
+        axis.text.y = element_text(hjust = 1),
+        legend.title = element_blank(),
+        legend.position = "right",
+        strip.background = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"),
+        panel.spacing = unit(1.5, "lines"),
+        aspect.ratio = 1)
+
+ggview(device = "jpeg", units = "in", dpi = 1200, width = 12, height = 6)
+
+ggsave("Publication-Figures/Predicted_SitexSeason_Blood_Hist.jpg",
+       dpi = 1200, width = 12, height = 6)
+
 
 # TROPHIC NICHE VARIATION ---------------------------------------------
 
@@ -737,6 +879,7 @@ ggsave("Publication-Figures/Species_AllTissues_Hist.jpg", dpi = 1200, width = 15
 df <- CollectiveData %>% 
   filter(Site_Name %nin% c("Unknown")) %>% 
   mutate(Site_Name = str_c(Site_Name, ", ", Country)) %>%
+  mutate(Site_Name = if_else(Mining_Present_Yes_No == "Yes", str_c("* ", Site_Name), Site_Name)) %>% 
   # adding tissue type as a data field 
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>%
@@ -943,46 +1086,6 @@ register_google(key = "AIzaSyAhVAGnjiPZgt0KtXSO_Od2j67CF6wEmD8", write = TRUE)
 # Possibility for the map type argument: terrain / satellite / roadmap / hybrid
 # get the map info
 satellitemap <- get_map(location = c(lon = -83.7, lat = 3.1), maptype = "satellite", source = "google", zoom = 4)
-
-# Graphical abstract
-# All tissue map with points
-MapData <- CollectiveData %>%
-  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
-               names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(Concentration)) %>%
-  arrange(Concentration) %>% # this is so that the points will be plotted big -> small
-  # making sure all individuals can be plotted
-  mutate(Banding_Station_Lat = if_else(is.na(Banding_Station_Lat), Site_Lat, Banding_Station_Lat),
-         Banding_Station_Long = if_else(is.na(Banding_Station_Long), Site_Long, Banding_Station_Long))
-
-# setting breaks for the color ramp
-my_breaks = c(0, 0.01, 0.1, 1, 10, 60)
-
-ggmap(satellitemap) +
-  geom_point(data = MapData, mapping = aes(x = Banding_Station_Long, y = Banding_Station_Lat,
-                                           color = Concentration, size = Concentration),
-             position = position_jitter(width = 0.5, height = 0.5)) +
-  scale_color_gradient(high = "red", low = "yellow", trans = "log", breaks = my_breaks,
-                       labels = my_breaks) +
-  scale_size(range = c(10, 2), trans = "log") + # setting the point size
-  labs(x = "Longitude", y = "Latitude", color = "THg (µg/g)") +
-  theme_classic(base_size = 14) +
-  theme(#axis.title.x = element_text(face = "bold"),
-    #axis.title.y = element_text(face = "bold"),
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.title.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    legend.title = element_text(face = "bold"),
-    aspect.ratio = 1) +
-  guides(size = "none") # removing size legend 
-
-ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
-
-ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.jpg", dpi = 1200, width = 8, height = 6)
-
 
 # Blood map with points as circles
 MapData <- CollectiveData %>%
@@ -1236,3 +1339,89 @@ ggarrange(bloodmap, bloodsamplemap, bodymap, bodysamplemap, tailmap, tailsamplem
           nrow = 3, ncol = 2)
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 16.5, height = 18)
 ggsave("Publication-Figures/Fig5_Facet_Map_AllTissueConcSample.jpg", dpi = 1200, width = 16.5, height = 18)
+
+
+# Graphical abstract Hg
+# All tissue map with points
+MapData <- CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>%
+  filter(!is.na(Concentration)) %>%
+  arrange(Concentration) %>% # this is so that the points will be plotted big -> small
+  # making sure all individuals can be plotted
+  mutate(Banding_Station_Lat = if_else(is.na(Banding_Station_Lat), Site_Lat, Banding_Station_Lat),
+         Banding_Station_Long = if_else(is.na(Banding_Station_Long), Site_Long, Banding_Station_Long))
+
+# setting breaks for the color ramp
+my_breaks = c(0.001, 0.01, 0.1, 1, 10, 60)
+
+GAbstractHg <- ggmap(satellitemap) +
+  geom_point(data = MapData, mapping = aes(x = Banding_Station_Long, y = Banding_Station_Lat,
+                                           color = Concentration, size = Concentration),
+             position = position_jitter(width = 0.5, height = 0.5)) +
+  scale_color_gradient(high = "red", low = "yellow", trans = "log", breaks = my_breaks,
+                       labels = my_breaks) +
+  scale_size(range = c(10, 2), trans = "log") + # setting the point size
+  labs(x = "Longitude", y = "Latitude", color = "THg (µg/g)") +
+  theme_classic(base_size = 14) +
+  theme(#axis.title.x = element_text(face = "bold"),
+    #axis.title.y = element_text(face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold"),
+    aspect.ratio = 1) +
+  guides(size = "none") # removing size legend 
+
+ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
+
+
+# Graphical abstract sample map
+MapData <- CollectiveData %>%
+  filter(!is.na(Banding_Station_Long),
+         !is.na(Banding_Station_Lat))
+
+# constructing hex grid of a certain size
+hexgrid <- dggridR::dgconstruct(res = 7)
+
+MapData$cell <- dgGEO_to_SEQNUM(hexgrid, MapData$Banding_Station_Long, MapData$Banding_Station_Lat)$seqnum
+
+cell_count <- MapData %>%
+  group_by(cell) %>%
+  summarise(count = n())
+
+grid <- dgcellstogrid(hexgrid, cell_count$cell, frame = TRUE, wrapcells = TRUE)
+grid <- merge(grid, cell_count, by = "cell")
+
+GAbstractN <- ggmap(satellitemap) +
+  #coord_cartesian() +
+  geom_polygon(data = grid, aes(x = long, y = lat, group = group, fill = count)) +
+  geom_path(data = grid, aes(x = long, y = lat, group = group), alpha = 0.8, color = "white") +
+  #geom_hex(data = MapData, mapping = aes(x = Site_Long, y = Site_Lat)) +
+  #geom_bin2d(data = MapData, mapping = aes(x = Site_Long, y = Site_Lat)) +
+  #scale_fill_viridis_c() +
+  scale_fill_gradient(high = "red", low = "yellow", breaks = c(200, 400, 600)) +
+  labs(x = "Longitude", y = "Latitude", fill = "Tail feather\nsample size") +
+  #ggtitle("Resident species only") +
+  theme_classic(base_size = 14) +
+  theme(#axis.title.x = element_text(face = "bold"),
+    #axis.title.y = element_text(face = "bold"),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.title = element_text(face = "bold"),
+    aspect.ratio = 1) +
+  guides(size = "none") # removing size legend
+
+ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
+
+ggarrange(GAbstractHg, GAbstractN, nrow = 1, ncol = 2)
+ggview(device = "jpeg", units = "in", dpi = 1200, width = 16, height = 6)
+ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.jpg", dpi = 1200, width = 16, height = 6)
+
