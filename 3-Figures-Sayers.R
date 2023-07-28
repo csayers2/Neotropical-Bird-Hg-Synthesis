@@ -1,3 +1,5 @@
+# Chris Sayers
+# Last updated: July 28, 2023
 
 # Script designed to produce graphs featured in publication and annex
 # Requires objects from 1-Data-Wrangling-Sayers.R and 2-Model-Fitting-Sayers.R
@@ -19,11 +21,12 @@ library(ggview)
 select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
-# 1st place model from model selection
-topmodel <- glmmTMB(log(Hg_Concentration) ~ Trophic_Niche + Tissue_Type + 
-                      Primary_Habitat + Mining_Present_Yes_No +
-                      (1 | Site_Name/Banding_Station_Name) + (1 | Family/Species_Common_Name) + (1 | Year),
-                    data = HgSamples, family = "gaussian", REML = F)
+# 1st place model functional trait from model selection
+topFTmodel <- glmmTMB(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
+                        Primary_Habitat + Mining_Present_Yes_No + 
+                        (1 | Site_Name/Banding_Station_Name) +
+                        (1 | Family/Species_Latin_Name/Band_Num) + (1 | Year),
+                      data = HgSamples, family = "gaussian", REML = F)
 
 # PREDICTED TROPHIC NICHE x ASGM ----------------------------------------------
 
@@ -38,7 +41,7 @@ ss <- HgSamples %>%
 
 # calculating predicted Hg values with top model structure
 # type = "random" gives prediction intervals rather than confidence intervals
-pr <- ggpredict(topmodel, terms = c("Trophic_Niche", "Tissue_Type", "Mining_Present_Yes_No"),
+pr <- ggpredict(topFTmodel, terms = c("Trophic_Niche", "Tissue_Type", "Mining_Present_Yes_No"),
                 type = "random", back.transform = T) %>%
   rename(Trophic_Niche = x, Tissue_Type = group, Mining_Present_Yes_No = facet) %>%
   left_join(ss, by = "Trophic_Niche") %>% 
@@ -48,10 +51,10 @@ pr <- ggpredict(topmodel, terms = c("Trophic_Niche", "Tissue_Type", "Mining_Pres
   transform(Mining_Present_Yes_No = factor(Mining_Present_Yes_No, levels = c("No", "Yes"),
                                            labels = c("ASGM absent", "ASGM present"))) %>% 
   # adding post-hoc comparisons
-  mutate(Tukey = ifelse(Trophic_Niche %in% c("Terrestrial vertivore"), "a", 
-                        ifelse(Trophic_Niche %in% c("Invertivore"), "b",
-                               ifelse(Trophic_Niche %in% c("Aquatic predator"), "abc",
-                                      ifelse(Trophic_Niche %in% c("Nectarivore"), "bc", "c"))))) %>%
+  mutate(Tukey = ifelse(Trophic_Niche %in% c("Terrestrial vertivore", "Invertivore"), "a", 
+                        ifelse(Trophic_Niche %in% c("Aquatic predator"), "ab",
+                               ifelse(Trophic_Niche %in% c("Nectarivore"), "abc",
+                                      ifelse(Trophic_Niche %in% c("Omnivore"), "b", "c"))))) %>%
   # only pasting the tukey levels once in the plot
   #mutate(Tukey = if_else(Tissue_Type == "Whole blood", Tukey, NA_character_)) %>%
   mutate(Tukey = if_else(Tissue_Type == "Tail feather", Tukey, NA_character_)) %>%
@@ -106,7 +109,7 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
-ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues_Hist.jpg",
+ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.jpg",
        dpi = 1200, width = 15, height = 5)
 
 
@@ -123,7 +126,7 @@ ss <- HgSamples %>%
 
 # calculating predicted Hg values with top model structure
 # type = "random" gives prediction intervals rather than confidence intervals
-pr <- ggpredict(topmodel, terms = c("Primary_Habitat", "Tissue_Type", "Mining_Present_Yes_No"),
+pr <- ggpredict(topFTmodel, terms = c("Primary_Habitat", "Tissue_Type", "Mining_Present_Yes_No"),
                 type = "random", back.transform = T) %>%
   rename(Primary_Habitat = x, Tissue_Type = group, Mining_Present_Yes_No = facet) %>%
   left_join(ss, by = "Primary_Habitat") %>% 
@@ -134,8 +137,8 @@ pr <- ggpredict(topmodel, terms = c("Primary_Habitat", "Tissue_Type", "Mining_Pr
                                            labels = c("ASGM absent", "ASGM present"))) %>% 
   # adding post-hoc comparisons
   mutate(Tukey = ifelse(Primary_Habitat %in% c("Aquatic"), "a", 
-                        ifelse(Primary_Habitat %in% c("Lowland evergreen forest", "Grassland/scrub",
-                                                      "Lowland deciduous forest"), "ab", "b"))) %>% 
+                        ifelse(Primary_Habitat %in% c("Lowland deciduous forest", "Grassland/scrub",
+                                                      "Lowland evergreen forest", "Secondary forest"), "ab", "b"))) %>% 
   # only pasting the tukey levels once in the plot
   #mutate(Tukey = if_else(Tissue_Type == "Whole blood", Tukey, NA_character_)) %>%
   mutate(Tukey = if_else(Tissue_Type == "Tail feather", Tukey, NA_character_)) %>%
@@ -189,7 +192,7 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
-ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues_Hist.jpg",
+ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.jpg",
        dpi = 1200, width = 15, height = 5)
 
 
@@ -206,7 +209,7 @@ ss <- HgSamples %>%
 
 # calculating predicted Hg values with top model structure
 # type = "random" gives prediction intervals rather than confidence intervals
-pr <- ggpredict(topmodel, terms = c("Family", "Tissue_Type", "Mining_Present_Yes_No"),
+pr <- ggpredict(topFTmodel, terms = c("Family", "Tissue_Type", "Mining_Present_Yes_No"),
                 type = "random", back.transform = T) %>%
   rename(Family = x, Tissue_Type = group, Mining_Present_Yes_No = facet) %>%
   left_join(ss, by = "Family") %>% 
@@ -266,7 +269,7 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 10)
 
-ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues_Hist.jpg",
+ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.jpg",
        dpi = 1200, width = 15, height = 10)
 
 
@@ -275,6 +278,8 @@ ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues_Hist.jpg",
 # calculating tissue sample sizes for y axis
 ss <- HgSamples %>%
   mutate(Site_Name2 = str_c(Site_Name, ", ", Country)) %>%
+  # denoting ASGM presence
+  mutate(Site_Name2 = if_else(Mining_Present_Yes_No == "Yes", str_c("* ", Site_Name2), Site_Name2)) %>% 
   group_by(Site_Name, Site_Name2, Tissue_Type) %>%
   summarize(n = n()) %>%
   pivot_wider(names_from = Tissue_Type, values_from = n, values_fill = 0) %>%
@@ -284,7 +289,7 @@ ss <- HgSamples %>%
 
 # calculating predicted Hg values with top model structure
 # type = "random" gives prediction intervals rather than confidence intervals
-pr <- ggpredict(topmodel, terms = c("Site_Name", "Tissue_Type"),
+pr <- ggpredict(topFTmodel, terms = c("Site_Name", "Tissue_Type"),
                 type = "random", back.transform = T) %>%
   rename(Site_Name = x, Tissue_Type = group) %>%
   left_join(ss, by = "Site_Name") %>% 
@@ -359,7 +364,9 @@ pr <- ggpredict(temporalmodel, terms = c("Season"),
   # adding post-hoc comparisons
   mutate(Tukey = ifelse(Season %in% c("Dry"), "a", "b")) %>%
   group_by(Season) %>% 
-  mutate(spacing = max(conf.high) * 10)
+  mutate(spacing = max(conf.high) * 15) %>% 
+  # removing weird NA rows
+  filter(!is.na(Season))
 
 # create final data frame with raw data and predicted means to plot
 df <- BloodHgSamples %>% 
@@ -536,7 +543,7 @@ df <- CollectiveData %>%
   # adding tissue type as a data field 
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>%
-  filter(!is.na(Order), !is.na(Concentration)) %>%
+  filter(!is.na(Order) | Order == "", !is.na(Concentration)) %>%
   group_by(Order, Tissue_Type) %>%
   summarize(n = n(), mean = mean(Concentration), sd = sd(Concentration)) %>%
   pivot_wider(names_from = Tissue_Type, values_from = c(n, mean, sd), values_fill = list(n = 0, mean = NA, sd = NA)) %>%
@@ -794,8 +801,7 @@ ggsave("Publication-Figures/Site_AllTissues_Hist.jpg", dpi = 1200, width = 15, h
 
 # Risk graph for blood
 bloodrisk <- CollectiveData %>%
-  filter(!is.na(Blood_Hg_ppm), !is.na(Species_Latin_Name),
-         Species_Code != "BIRD") %>%
+  filter(!is.na(Blood_Hg_ppm), !is.na(Species_Latin_Name)) %>%
   group_by(Species_Latin_Name) %>%
   mutate(Sample_Size = str_c("n = ", n()),
          Species_Latin_Name = glue("*{Species_Latin_Name}* ({Sample_Size})"),
@@ -837,7 +843,7 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 12, height = 8)
 
 # Risk graph for body feathers
 bodyrisk <- CollectiveData %>%
-  filter(!is.na(Species_Latin_Name), !is.na(Body_Hg_ppm), Species_Code != "BIRD") %>%
+  filter(!is.na(Species_Latin_Name), !is.na(Body_Hg_ppm)) %>%
   group_by(Species_Latin_Name) %>%
   mutate(Sample_Size = str_c("n = ", n()),
          Species_Latin_Name = glue("*{Species_Latin_Name}* ({Sample_Size})"),
@@ -879,7 +885,7 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 12, height = 8)
 
 # Risk graph for rectrices
 tailrisk <- CollectiveData %>%
-  filter(!is.na(Species_Latin_Name), !is.na(Tail_Hg_ppm), Species_Code != "BIRD") %>%
+  filter(!is.na(Species_Latin_Name), !is.na(Tail_Hg_ppm)) %>%
   group_by(Species_Latin_Name) %>%
   mutate(Sample_Size = str_c("n = ", n()),
          Species_Latin_Name = glue("*{Species_Latin_Name}* ({Sample_Size})"),
@@ -931,7 +937,7 @@ library(raster)
 
 # Google satellite imagery as a background
 library(ggmap)
-register_google(key = "insert personal key here", write = TRUE)
+register_google(key = "AIzaSyAhVAGnjiPZgt0KtXSO_Od2j67CF6wEmD8", write = TRUE)
 
 # For google map, you have to give the center of the window you are looking at.
 # Possibility for the map type argument: terrain / satellite / roadmap / hybrid
