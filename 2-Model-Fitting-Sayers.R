@@ -228,16 +228,16 @@ performance::r2(topFTmodel)
 car::Anova(topFTmodel, type = 3)
 
 # computing post-hoc comparisons to determine significant differences among the modeled means
-emmeans(topFTmodel, "Tissue_Type", type = "response") %>% 
+emmeans(topFTmodel, ~ Tissue_Type, type = "response") %>% 
   cld(Letter = "abcdefg")
 
-emmeans(topFTmodel, "Trophic_Niche", type = "response") %>% 
+emmeans(topFTmodel, ~ Trophic_Niche, type = "response") %>% 
   cld(Letter = "abcdefg")
 
-emmeans(topFTmodel, "Primary_Habitat", type = "response") %>% 
+emmeans(topFTmodel, ~ Primary_Habitat, type = "response") %>% 
   cld(Letter = "abcdefg")
 
-emmeans(topFTmodel, "Mining_Present_Yes_No", type = "response") %>% 
+emmeans(topFTmodel, ~ Mining_Present_Yes_No, type = "response") %>% 
   cld(Letter = "abcdefg")
 
 boxplot(log(Hg_Concentration) ~ Tissue_Type, HgSamples)
@@ -250,7 +250,7 @@ boxplot(log(Hg_Concentration) ~ Year, HgSamples)
 # TEMPORAL MODEL -----------------------------------------------
 
 BloodHgSamples <- HgSamples %>% 
-  filter(Tissue_Type == "Blood_Hg_ppm")
+  filter(Tissue_Type == "Blood_Hg_ppm", !is.na(Season))
 
 # global temporal model
 temporalmodel <- glmmTMB(log(Hg_Concentration) ~ 
@@ -336,6 +336,7 @@ runs.test(residuals(temporalmodel)) # we do not have autocorrelated data
 
 # CANDIDATE MODEL SET -----------------------------------------------
 
+# global temporal model
 temporalmodel <- glmmTMB(log(Hg_Concentration) ~ 
                            
                            # temporal variation   
@@ -364,7 +365,7 @@ write.csv(d.out2, "Outputs/temporal-model-selection.csv")
 # figuring out which REs are significant in our top model structure
 m0 <- glmmTMB(log(Hg_Concentration) ~ Season, data = HgSamples, family = "gaussian", REML = F)
 m1 <- glmmTMB(log(Hg_Concentration) ~ (1 | Site_Name/Banding_Station_Name) + Season, data = HgSamples, family = "gaussian", REML = F)
-m2 <- glmmTMB(log(Hg_Concentration) ~ (1 | Family/Species_Latin_Name) + Season, data = HgSamples, family = "gaussian", REML = F)
+m2 <- glmmTMB(log(Hg_Concentration) ~ (1 | Family/Species_Latin_Name/Band_Num) + Season, data = HgSamples, family = "gaussian", REML = F)
 m3 <- glmmTMB(log(Hg_Concentration) ~ (1 | Year) + Season, data = HgSamples, family = "gaussian", REML = F)
 anova(m0, m1, m2, m3) # all have p < 0.05
 
@@ -384,5 +385,5 @@ car::Anova(temporalmodel, type = 3)
 
 
 # computing post-hoc comparisons to determine significant differences among the modeled means
-emmeans(temporalmodel, "Season", type = "response") %>% 
+emmeans(temporalmodel, ~ Season, type = "response") %>% 
   cld(Letter = "abcdefg")
