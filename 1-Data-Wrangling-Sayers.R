@@ -1321,10 +1321,10 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   mutate(Site_Name = if_else(Site_Name == "Azul Mine", "Reserva Nacional Tambopata - Azul", Site_Name)) %>%
   mutate(Site_Name = if_else(Site_Name == "La Torre", "Reserva Nacional Tambopata - La Torre", Site_Name)) %>%
   mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "Laberinto", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Inambari", Site_Name)) %>% 
-  # getting rid of weird blanks
-  mutate(across(everything(), ~ifelse(. == "", NA, as.character(.))))
+  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Inambari", Site_Name))
 
+# getting rid of weird blanks in data frame
+CollectiveData[CollectiveData == ""] <- NA
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
 
