@@ -89,7 +89,7 @@ edata <- read.csv("Parker_Stotz_Fitzpatrick_1996/edata.csv") %>% # Austral migra
 parker <- full_join(cdata, ddata) %>%
   full_join(edata) %>%
   full_join(adata) %>%
-  unite(Species_Latin_Name, c("GENUS", "SPECIES"), sep = " ", remove = F) %>% 
+  unite(Species_Latin_Name, c("GENUS", "SPECIES"), sep = " ", remove = F) %>%
   # this function determines which neotropical "residents" are duplicated as partial
   # migrants in "ddata" or "austral migrants in "edata", it then returns only the
   #data associated with the resident entry (e.g. Egretta alba -- old name for Great Egret)
@@ -1321,7 +1321,9 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   mutate(Site_Name = if_else(Site_Name == "Azul Mine", "Reserva Nacional Tambopata - Azul", Site_Name)) %>%
   mutate(Site_Name = if_else(Site_Name == "La Torre", "Reserva Nacional Tambopata - La Torre", Site_Name)) %>%
   mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "Laberinto", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Inambari", Site_Name))
+  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Inambari", Site_Name)) %>% 
+  # getting rid of weird blanks
+  mutate(across(everything(), ~ifelse(. == "", NA, as.character(.))))
 
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
@@ -1365,7 +1367,7 @@ summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Order, Tissue_Type, Concentration) %>% 
-  filter(!is.na(Concentration)) %>%
+  filter(!is.na(Order), !is.na(Concentration)) %>%
   count(Order) %>% 
   view()
 
@@ -1383,7 +1385,7 @@ summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Family, Tissue_Type, Concentration) %>% 
-  filter(!is.na(Concentration), !is.na(Family)) %>%
+  filter(!is.na(Family), !is.na(Concentration)) %>%
   count(Family) %>% 
   view()
 nrow(summary)
@@ -1400,7 +1402,6 @@ summary <- CollectiveData %>%
   view()
 nrow(summary)
   
-
 # How many total sampled sites do we have?
 summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
