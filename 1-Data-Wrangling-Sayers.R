@@ -18,6 +18,9 @@ select <- dplyr::select
 "%nin%" <- Negate("%in%")
 
 TRACEData <- read.csv("TRACE_Database_26Jul2023.csv", na.strings = c("",".","NA")) %>%
+  # creating unique identifier codes for each individual, since we have
+  # duplicate banding codes that are not recaptures
+  mutate(Band_Num = str_c(Species_Latin_Name, "-", Band_Num), as.character(Band_Num)) %>% 
   # removing captive birds from data set
   filter(Site_Name %nin% c("Belize Zoo", "Belize Raptor Center")) %>% 
   # excluding sparse historical feather samples from museums
@@ -1357,6 +1360,13 @@ summary <- CollectiveData %>%
 # this total includes multiple tissue samples from the same individual
 sum(summary$n)
 
+# How many unique individuals do we have?
+summary <- CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+  filter(!is.na(Concentration))
+length(unique(summary$Band_Num))
+
 # How many total sampled families do we have?
 summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
@@ -1378,6 +1388,7 @@ summary <- CollectiveData %>%
   count(Species_Latin_Name) %>% 
   view()
 nrow(summary)
+  
 
 # How many total sampled sites do we have?
 summary <- CollectiveData %>%
