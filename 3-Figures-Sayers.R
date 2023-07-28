@@ -1028,7 +1028,7 @@ MapData <- CollectiveData %>%
          Banding_Station_Long = if_else(is.na(Banding_Station_Long), Site_Long, Banding_Station_Long))
 
 # setting breaks for the color ramp
-my_breaks = c(0.01, 0.1, 1, 10, 60)
+my_breaks = c(0.001, 0.01, 0.1, 1, 10, 60)
 
 bodymap <- ggmap(satellitemap) +
   geom_point(data = MapData, mapping = aes(x = Banding_Station_Long, y = Banding_Station_Lat,
@@ -1063,7 +1063,7 @@ MapData <- CollectiveData %>%
          Banding_Station_Long = if_else(is.na(Banding_Station_Long), Site_Long, Banding_Station_Long))
 
 # setting breaks for the color ramp
-my_breaks = c(0.01, 0.1, 1, 10)
+my_breaks = c(0.001, 0.01, 0.1, 1, 10)
 #breaks = c(0, 2, 6, 10)
 
 tailmap <- ggmap(satellitemap) +
@@ -1093,8 +1093,9 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 8.5, height = 18)
 
 
 # SAMPLE MAPS ------------------------------------------------------------------
+library(devtools)
 # VERY important to install the older version of the ddgridR package
-#install.packages("https://cran.r-project.org/src/contrib/Archive/dggridR/dggridR_2.0.4.tar.gz", repos=NULL)
+#install_version("dggridR", version = "2.0.4", repos = "http://cran.us.r-project.org")
 library(dggridR)
 library(mapdata)
 
