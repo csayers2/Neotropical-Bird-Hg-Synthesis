@@ -1,5 +1,5 @@
 # Chris Sayers
-# Last updated: July 27, 2023
+# Last updated: July 28, 2023
 
 # Script designed to create and compare linear mixed-effects models
 # Requires objects from 1-Data-Wrangling-Sayers.R
@@ -48,6 +48,7 @@ unique(HgSamples$Site_Name)
 unique(HgSamples$Banding_Station_Name)
 unique(HgSamples$Family)
 unique(HgSamples$Species_Latin_Name)
+length(unique(HgSamples$Band_Num))
 unique(HgSamples$Year)
 
 #----------------------- DATA VISUALIZATION ------------------------------------
@@ -58,7 +59,7 @@ ggdensity(HgSamples$Hg_Concentration, xlab = "Hg Concentration (µg/g)") # some 
 
 ggqqplot(HgSamples$Hg_Concentration, ylab = "Hg Concentration (µg/g)") # tails stray from far from normal
 shapiro.test(HgSamples$Hg_Concentration) # W = 0.29137, p-value < 2.2e-16, not normal
-# log-transformation may be necessary for linear models
+# log-transformation will be necessary for linear models
 
 # log-transformed data diagnostics
 ggdensity(HgSamples$lHg_Concentration, xlab = "ln[Hg Concentration (µg/g)]")
@@ -79,7 +80,7 @@ ggplot(HgSamples, aes(x = log(Hg_Concentration), y = Family, color = Tissue_Type
 # FUNCTIONAL TRAIT MODEL -------------------------------------------------------
 
 # global functional trait model
-fullmodel <- glmmTMB(log(Hg_Concentration) ~ 
+FTmodel <- glmmTMB(log(Hg_Concentration) ~ 
                      
                      # Hg toxicokinetics
                      Tissue_Type +
@@ -94,82 +95,83 @@ fullmodel <- glmmTMB(log(Hg_Concentration) ~
                   
                      # crossed random effects
                      (1 | Site_Name/Banding_Station_Name) +
-                     (1 | Family/Species_Common_Name/Band_Num) +
+                     (1 | Family/Species_Latin_Name/Band_Num) +
                      (1 | Year),
+                   
                    data = HgSamples, family = "gaussian", REML = F)
 
-summary(fullmodel)
-as.data.frame(confint(fullmodel)) %>% 
+summary(FTmodel)
+as.data.frame(confint(FTmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
-performance::r2(fullmodel)
-car::Anova(fullmodel, type = 3)
+performance::r2(FTmodel)
+car::Anova(FTmodel, type = 3)
 
 # CHECKING MODEL ASSUMPTIONS -------------------------------------
 # Checking for homogeneity of variance & normality of residuals
-mean(residuals(fullmodel)) # VERY close to 0
+mean(residuals(FTmodel)) # VERY close to 0
 
 #library(lmerTest)
 #library(ggResidpanel)
-#fullmodel1 <- lmer(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
+#FTmodel1 <- lmer(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
 #                    Primary_Habitat + Migratory_Status + Mining_Present_Yes_No +
 #                    (1 | Site_Name/Banding_Station_Name) + (1 | Family/Species_Common_Name/Band_Num) + (1 | Year),
 #                  data = HgSamples, REML = F)
 #
-#resid_panel(fullmodel1, plots = "all", type = NA, bins = 30,
+#resid_panel(FTmodel1, plots = "all", type = NA, bins = 30,
 #            smoother = T, qqline = T, qqbands = T, scale = 1,
 #            theme = "bw", axis.text.size = 10, title.text.size = 12,
 #            title.opt = TRUE, nrow = NULL)
 ## residual plots look great
 
-simulateResiduals(fullmodel, plot = T, refit = F, use.u = T)
-shapiro.test(residuals(fullmodel)) # W = 0.97427, p-value < 2.2e-16, not normal
+simulateResiduals(FTmodel, plot = T, refit = F, use.u = T)
+shapiro.test(residuals(FTmodel)) # W = 0.97427, p-value < 2.2e-16, not normal
 # residual plots look okay
 
 # Checking for data points with high leverage
 source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
-inf <- influence_mixed(fullmodel)
+inf <- influence_mixed(FTmodel)
 infIndexPlot(inf)
 
 # Checking for normality of random effects
-rand <- as.data.frame(ranef(fullmodel)) %>% 
+rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Site_Name"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.90097, p-value = 0.00204, we are not normal
+shapiro.test(rand$condval) # W = 0.90152, p-value = 0.002117, not normal
 
-rand <- as.data.frame(ranef(fullmodel)) %>%
+rand <- as.data.frame(ranef(FTmodel)) %>%
   filter(grpvar %in% c("Banding_Station_Name:Site_Name"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.92365, p-value = 0.001487, we are not normal
+shapiro.test(rand$condval) # W = 0.92383, p-value = 0.001513, not normal
 
-rand <- as.data.frame(ranef(fullmodel)) %>% 
+rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.94334, p-value = 0.02, we are not normal
+shapiro.test(rand$condval) # W = 0.9458, p-value = 0.02503, not normal
 
-rand <- as.data.frame(ranef(fullmodel)) %>% 
-  filter(grpvar %in% c("Species_Common_Name:Family"))
+rand <- as.data.frame(ranef(FTmodel)) %>% 
+  filter(grpvar %in% c("Species_Latin_Name:Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.9918, p-value = 0.07674, we are normal
+shapiro.test(rand$condval) # W = 0.99174, p-value = 0.07528, normal
 
-rand <- as.data.frame(ranef(fullmodel)) %>% 
-  filter(grpvar %in% c("Band_Num:Species_Common_Name:Family"))
-ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.96609, p-value < 2.2e-16, we are not normal
+rand <- as.data.frame(ranef(FTmodel)) %>% 
+  filter(grpvar %in% c("Band_Num:Species_Latin_Name:Family"))
+ggqqplot(rand$condval) # tails stray from normal
+shapiro.test(rand$condval) # W = 0.96609, p-value < 2.2e-16, not normal
 
-rand <- as.data.frame(ranef(fullmodel)) %>% 
+rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Year"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.90177, p-value = 0.1414, we are normal
+shapiro.test(rand$condval) # W = 0.90247, p-value = 0.1446, normal
 
 # Checking for autocorrelation/independence
 acf(HgSamples$Hg_Concentration) # raw data is autocorrelated
-acf(residuals(fullmodel)) # random effects variable corrects for this
-runs.test(residuals(fullmodel)) # we do not have autocorrelated data
+acf(residuals(FTmodel)) # random effects variable corrects for this
+runs.test(residuals(FTmodel)) # we do not have autocorrelated data
 
 
 # CANDIDATE MODEL SET -----------------------------------------------
 
-fullmodel <- glmmTMB(log(Hg_Concentration) ~ 
+FTmodel <- glmmTMB(log(Hg_Concentration) ~ 
                        
                        # Hg toxicokinetics
                        Tissue_Type +
@@ -184,19 +186,20 @@ fullmodel <- glmmTMB(log(Hg_Concentration) ~
                        
                        # crossed random effects
                        (1 | Site_Name/Banding_Station_Name) +
-                       (1 | Family/Species_Common_Name/Band_Num) +
+                       (1 | Family/Species_Latin_Name/Band_Num) +
                        (1 | Year),
+                   
                      data = HgSamples, family = "gaussian", REML = F)
 
-summary(fullmodel)
-as.data.frame(confint(fullmodel)) %>% 
+summary(FTmodel)
+as.data.frame(confint(FTmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
-performance::r2(fullmodel)
-car::Anova(fullmodel, type = 3)
+performance::r2(FTmodel)
+car::Anova(FTmodel, type = 3)
 
 options(na.action = "na.fail")
 # computes marginal and conditional R^2
-d.out1 <- MuMIn::dredge(fullmodel, extra = list("Rsq" = function(x){performance::r2(x)}))
+d.out1 <- MuMIn::dredge(FTmodel, extra = list("Rsq" = function(x){performance::r2(x)}))
 View(d.out1)
 options(na.action = "na.omit")
 write.csv(d.out1, "Outputs/functional-trait-model-selection.csv")
@@ -204,36 +207,37 @@ write.csv(d.out1, "Outputs/functional-trait-model-selection.csv")
 # figuring out which REs are significant in our top model structure
 m0 <- glmmTMB(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + Primary_Habitat + Mining_Present_Yes_No, data = HgSamples, family = "gaussian", REML = F)
 m1 <- glmmTMB(log(Hg_Concentration) ~ (1 | Site_Name/Banding_Station_Name) + Tissue_Type + Trophic_Niche + Primary_Habitat + Mining_Present_Yes_No, data = HgSamples, family = "gaussian", REML = F)
-m2 <- glmmTMB(log(Hg_Concentration) ~ (1 | Family/Species_Common_Name/Band_Num) + Tissue_Type + Trophic_Niche + Primary_Habitat + Mining_Present_Yes_No, data = HgSamples, family = "gaussian", REML = F)
+m2 <- glmmTMB(log(Hg_Concentration) ~ (1 | Family/Species_Latin_Name/Band_Num) + Tissue_Type + Trophic_Niche + Primary_Habitat + Mining_Present_Yes_No, data = HgSamples, family = "gaussian", REML = F)
 m3 <- glmmTMB(log(Hg_Concentration) ~ (1 | Year) + Tissue_Type + Trophic_Niche + Primary_Habitat  + Mining_Present_Yes_No, data = HgSamples, family = "gaussian", REML = F)
 anova(m0, m1, m2, m3) # all have p < 0.05
 
 # 1st place model by a long-shot
-topmodel <- glmmTMB(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
-                   Primary_Habitat + Mining_Present_Yes_No +
-                   (1 | Site_Name/Banding_Station_Name) + (1 | Family/Species_Common_Name/Band_Num) + (1 | Year),
-                 data = HgSamples, family = "gaussian", REML = F)
+topFTmodel <- glmmTMB(log(Hg_Concentration) ~ Tissue_Type + Trophic_Niche + 
+                        Primary_Habitat + Mining_Present_Yes_No + 
+                        (1 | Site_Name/Banding_Station_Name) +
+                        (1 | Family/Species_Latin_Name/Band_Num) + (1 | Year),
+                      data = HgSamples, family = "gaussian", REML = F)
 
-summary(topmodel)
-as.data.frame(confint(topmodel)) %>% 
+summary(topFTmodel)
+as.data.frame(confint(topFTmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
 # RE estimates are SDs
-# back-transformed ASGM-present estimate = 3.762148
-exp(1.32499)
-performance::r2(topmodel)
-car::Anova(topmodel, type = 3)
+# back-transformed ASGM-present estimate = 3.754443
+exp(1.32294)
+performance::r2(topFTmodel)
+car::Anova(topFTmodel, type = 3)
 
 # computing post-hoc comparisons to determine significant differences among the modeled means
-emmeans(topmodel, "Tissue_Type", type = "response") %>% 
+emmeans(topFTmodel, "Tissue_Type", type = "response") %>% 
   cld(Letter = "abcdefg")
 
-emmeans(topmodel, "Trophic_Niche", type = "response") %>% 
+emmeans(topFTmodel, "Trophic_Niche", type = "response") %>% 
   cld(Letter = "abcdefg")
 
-emmeans(topmodel, "Primary_Habitat", type = "response") %>% 
+emmeans(topFTmodel, "Primary_Habitat", type = "response") %>% 
   cld(Letter = "abcdefg")
 
-emmeans(topmodel, "Mining_Present_Yes_No", type = "response") %>% 
+emmeans(topFTmodel, "Mining_Present_Yes_No", type = "response") %>% 
   cld(Letter = "abcdefg")
 
 boxplot(log(Hg_Concentration) ~ Tissue_Type, HgSamples)
@@ -256,7 +260,7 @@ temporalmodel <- glmmTMB(log(Hg_Concentration) ~
                         
                         # crossed random effects
                         (1 | Site_Name/Banding_Station_Name) +
-                        (1 | Family/Species_Common_Name/Band_Num) +
+                        (1 | Family/Species_Latin_Name/Band_Num) +
                         (1 | Year),
                       
                       data = BloodHgSamples, family = "gaussian", REML = F)
@@ -297,32 +301,32 @@ infIndexPlot(inf)
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
   filter(grpvar %in% c("Site_Name"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.98091, p-value = 0.8716, we are normal
+shapiro.test(rand$condval) # W = 0.98091, p-value = 0.8716, normal
 
 rand <- as.data.frame(ranef(temporalmodel)) %>%
   filter(grpvar %in% c("Banding_Station_Name:Site_Name"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.97825, p-value = 0.7014, we are normal
+shapiro.test(rand$condval) # W = 0.97825, p-value = 0.7014, normal
 
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
   filter(grpvar %in% c("Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.9463, p-value = 0.07334, we are normal
+shapiro.test(rand$condval) # W = 0.9463, p-value = 0.07334, normal
 
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
-  filter(grpvar %in% c("Species_Common_Name:Family"))
+  filter(grpvar %in% c("Species_Latin_Name:Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.98615, p-value = 0.1281, we are normal
+shapiro.test(rand$condval) # W = 0.98615, p-value = 0.1281, normal
 
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
-  filter(grpvar %in% c("Band_Num:Species_Common_Name:Family"))
+  filter(grpvar %in% c("Band_Num:Species_Latin_Name:Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.97703, p-value = 8.22e-11, we are not normal
+shapiro.test(rand$condval) # W = 0.97703, p-value = 8.22e-11, not normal
 
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
   filter(grpvar %in% c("Year"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.94921, p-value = 0.6254, we are normal
+shapiro.test(rand$condval) # W = 0.94921, p-value = 0.6254, normal
 
 # Checking for autocorrelation/independence
 acf(BloodHgSamples$Hg_Concentration) # raw data is autocorrelated
@@ -339,7 +343,7 @@ temporalmodel <- glmmTMB(log(Hg_Concentration) ~
                            
                            # crossed random effects
                            (1 | Site_Name/Banding_Station_Name) +
-                           (1 | Family/Species_Common_Name/Band_Num) +
+                           (1 | Family/Species_Latin_Name/Band_Num) +
                            (1 | Year),
                          
                          data = BloodHgSamples, family = "gaussian", REML = F)
@@ -360,13 +364,14 @@ write.csv(d.out2, "Outputs/temporal-model-selection.csv")
 # figuring out which REs are significant in our top model structure
 m0 <- glmmTMB(log(Hg_Concentration) ~ Season, data = HgSamples, family = "gaussian", REML = F)
 m1 <- glmmTMB(log(Hg_Concentration) ~ (1 | Site_Name/Banding_Station_Name) + Season, data = HgSamples, family = "gaussian", REML = F)
-m2 <- glmmTMB(log(Hg_Concentration) ~ (1 | Family/Species_Common_Name) + Season, data = HgSamples, family = "gaussian", REML = F)
+m2 <- glmmTMB(log(Hg_Concentration) ~ (1 | Family/Species_Latin_Name) + Season, data = HgSamples, family = "gaussian", REML = F)
 m3 <- glmmTMB(log(Hg_Concentration) ~ (1 | Year) + Season, data = HgSamples, family = "gaussian", REML = F)
 anova(m0, m1, m2, m3) # all have p < 0.05
 
 # 1st place model by a long-shot
-temporalmodel <- glmmTMB(log(Hg_Concentration) ~ Season + (1 | Site_Name/Banding_Station_Name)
-                         + (1 | Family/Species_Common_Name/Band_Num) + (1 | Year),
+temporalmodel <- glmmTMB(log(Hg_Concentration) ~ Season +
+                           (1 | Site_Name/Banding_Station_Name) +
+                           (1 | Family/Species_Common_Name/Band_Num) + (1 | Year),
                          data = BloodHgSamples, family = "gaussian", REML = F)
 
 summary(temporalmodel)
