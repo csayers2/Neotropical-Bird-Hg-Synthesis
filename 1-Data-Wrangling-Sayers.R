@@ -1328,12 +1328,25 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
 
 # How many samples do we have and from what organizations?
 # this total includes multiple tissue samples from the same individual
+
+# collection organization
 CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
   select(Collecting_Organization, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
   count(Collecting_Organization) %>% 
+  ungroup() %>% 
+  mutate(Percent = (n/sum(n))*100) %>% 
+  view()
+
+# lab organization
+CollectiveData %>%
+  pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
+               names_to = "Tissue_Type", values_to = "Concentration") %>% 
+  select(Lab_Organization, Tissue_Type, Concentration) %>% 
+  filter(!is.na(Concentration)) %>%
+  count(Lab_Organization) %>% 
   ungroup() %>% 
   mutate(Percent = (n/sum(n))*100) %>% 
   view()
