@@ -1440,7 +1440,7 @@ summary <- CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   ungroup() %>% 
-  mutate(Percent = (n/2176)*100) %>%
+  mutate(Percent = (n/2361)*100) %>%
   view()
 
 # How many samples do we have and for what countries?
@@ -1471,7 +1471,8 @@ CollectiveData %>%
          Mean = if_else(n > 1, str_c(Mean, " ± ", SD), as.character(Mean)),
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
-  view()
+  view() %>% 
+  write.csv("Outputs/Country-Hg-Summary.csv")
 
 # Creating a site Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1490,7 +1491,9 @@ CollectiveData %>%
          Mean = if_else(n > 1, str_c(Mean, " ± ", SD), as.character(Mean)),
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
-  view()
+  view() %>% 
+  write.csv("Outputs/Site-Hg-Summary.csv")
+
 
 # Creating an order Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1509,7 +1512,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("Outputs/OrderHg.csv")
+  write.csv("Outputs/Order-Hg-Summary.csv")
 
 # Creating a family Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1528,7 +1531,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("Outputs/FamilyHg.csv")
+  write.csv("Outputs/Family-Hg-Summary.csv")
 
 # Creating a species Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1548,7 +1551,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("Outputs/SpeciesHg.csv")
+  write.csv("Outputs/Species-Hg-Summary.csv")
 
 # Creating a trophic niche Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1567,7 +1570,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("Outputs/TrophicHg.csv")
+  write.csv("Outputs/Trophic-Hg-Summary.csv")
 
 # Creating a primary habitat Hg table displaying arithmetic mean and SD
 CollectiveData %>%
@@ -1586,7 +1589,7 @@ CollectiveData %>%
          Range = if_else(n > 1, str_c(Min, "—", Max), "NA")) %>% 
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
-  write.csv("Outputs/HabitatHg.csv")
+  write.csv("Outputs/Habitat-Hg-Summary.csv")
 
 unique(CollectiveData$HAB1)
 
@@ -1601,4 +1604,4 @@ CollectiveData %>%
            HAB1, Migratory_Status) %>%
   summarize(n = n()) %>% # Consolidating to 1 row per species
   view() %>% 
-  write.csv("Outputs/SpeciesClass.csv")
+  write.csv("Outputs/Species-Associations.csv")
