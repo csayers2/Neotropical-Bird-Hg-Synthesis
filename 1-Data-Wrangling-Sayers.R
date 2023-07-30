@@ -1,5 +1,5 @@
 # Chris Sayers
-# Last updated: July 28, 2023
+# Last updated: July 30, 2023
 
 
 # Script designed to join various Hg databases and match species to appropriate
@@ -1394,10 +1394,10 @@ nrow(summary)
 summary <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Concentration") %>% 
-  select(Species_Latin_Name, Tissue_Type, Concentration) %>% 
+  select(Species_Common_Name, Species_Latin_Name, Tissue_Type, Concentration) %>% 
   filter(!is.na(Concentration)) %>%
   # only including full species names
-  filter(!(str_detect(Species_Latin_Name, " sp."))) %>% 
+  filter(!(str_detect(Species_Common_Name, " sp."))) %>% 
   count(Species_Latin_Name) %>% 
   view()
 nrow(summary)
@@ -1601,5 +1601,5 @@ CollectiveData %>%
   group_by(Order, Family, Species_Common_Name, Species_Latin_Name, Trophic_Level, Trophic_Niche,
            HAB1, Migratory_Status) %>%
   summarize(n = n()) %>% # Consolidating to 1 row per species
-  view() %>% 
+  view() 
   write.csv("Outputs/Species-Associations.csv")
