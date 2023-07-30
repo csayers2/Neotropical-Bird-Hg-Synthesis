@@ -213,8 +213,9 @@ parker <- parker %>%
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Speotyto cunicularia", "Athene cunicularia", Species_Latin_Name)) %>% # Burrowing Owl
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Fluvicola (pica) pica", "Fluvicola pica", Species_Latin_Name)) %>% # Pied Water-Tyrant
   mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Certhiaxis cinnamomea", "Certhiaxis cinnamomeus", Species_Latin_Name)) %>% # Yellow-chinned Spinetail
-  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Todirostrum sylvia", "Poecilotriccus sylvia", Species_Latin_Name)) # Slate-headed Tody-Flycatcher
-  
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Todirostrum sylvia", "Poecilotriccus sylvia", Species_Latin_Name)) %>% # Slate-headed Tody-Flycatcher
+  mutate(Species_Latin_Name = ifelse(Species_Latin_Name == "Aratinga chloroptera", "Psittacara chloropterus", Species_Latin_Name)) # Hispaniolan Parakeet
+
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
@@ -1100,9 +1101,8 @@ unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
 
 # Missing species that still need to be added:
-# This not an immediate priority because these species don't have Hg samples
+# This not an immediate priority because this species don't have Hg samples
 # Lonchura malacca - Tricolored Munia
-# Psittacara chloropterus - Hispaniolan Parakeet
 
 # Taxa that cannot be joined (this is okay):
 # Aves sp.
@@ -1590,8 +1590,6 @@ CollectiveData %>%
   select(-c(Min_Year, Max_Year, SD, Min, Max)) %>% 
   view() %>% 
   write.csv("Outputs/Habitat-Hg-Summary.csv")
-
-unique(CollectiveData$HAB1)
 
 # Creating species association table
 CollectiveData %>%
