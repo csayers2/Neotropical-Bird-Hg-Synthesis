@@ -68,7 +68,9 @@ pr <- ggpredict(topFTmodel, terms = c("Trophic_Niche", "Tissue_Type", "Mining_Pr
   #group_by(Tissue_Type) %>% 
   #mutate(spacing = min(conf.low)/2)
   group_by(Tissue_Type) %>% 
-  mutate(spacing = max(conf.high) * 2)
+  mutate(spacing = max(conf.high) * 2) %>% 
+  # adjusting lower bound of confidence interval
+  mutate(conf.low = if_else(conf.low < 0.001, 0.001, conf.low))
 
 # create final data frame with raw data and predicted means to plot
 df <- HgSamples %>% 
@@ -152,7 +154,9 @@ pr <- ggpredict(topFTmodel, terms = c("Primary_Habitat", "Tissue_Type", "Mining_
   #group_by(Tissue_Type) %>% 
   #mutate(spacing = min(conf.low)/2)
   group_by(Tissue_Type) %>% 
-  mutate(spacing = max(conf.high) * 3)
+  mutate(spacing = max(conf.high) * 3) %>% 
+  # adjusting lower bound of confidence interval
+  mutate(conf.low = if_else(conf.low < 0.001, 0.001, conf.low))
 
 # create final data frame with raw data and predicted means to plot
 df <- HgSamples %>% 
@@ -228,7 +232,9 @@ pr <- ggpredict(topFTmodel, terms = c("Family", "Tissue_Type", "Mining_Present_Y
   #group_by(Tissue_Type) %>% 
   #mutate(spacing = min(conf.low)/2)
   group_by(Tissue_Type) %>% 
-  mutate(spacing = max(conf.high) * 2)
+  mutate(spacing = max(conf.high) * 2) %>% 
+  # adjusting lower bound of confidence interval
+  mutate(conf.low = if_else(conf.low < 0.001, 0.001, conf.low))
 
 # create final data frame with raw data and predicted means to plot
 df <- HgSamples %>% 
@@ -276,11 +282,6 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 10)
 ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.jpg",
        dpi = 1200, width = 15, height = 10)
 
-HgSamples %>% 
-  filter(Trophic_Niche == "Aquatic predator",
-         Tissue_Type == "Tail_Hg_ppm") %>% 
-  view()
-
 
 # PREDICTED SITE -----------------------------------------------------
 
@@ -311,7 +312,9 @@ pr <- ggpredict(topFTmodel, terms = c("Site_Name", "Tissue_Type"),
   #group_by(Tissue_Type) %>% 
   #mutate(spacing = min(conf.low)/2)
   group_by(Tissue_Type) %>% 
-  mutate(spacing = max(conf.high) * 2)
+  mutate(spacing = max(conf.high) * 2) %>% 
+  # adjusting lower bound of confidence interval
+  mutate(conf.low = if_else(conf.low < 0.001, 0.001, conf.low))
 
 # create final data frame with raw data and predicted means to plot
 df <- HgSamples %>% 
@@ -379,7 +382,9 @@ pr <- ggpredict(temporalmodel, terms = c("Trophic_Niche", "Season"),
   #group_by(Season) %>% 
   #mutate(spacing = min(conf.low)/2)
   group_by(Season) %>% 
-  mutate(spacing = max(conf.high) * 2)
+  mutate(spacing = max(conf.high) * 2) %>% 
+  # adjusting lower bound of confidence interval
+  mutate(conf.low = if_else(conf.low < 0.001, 0.001, conf.low))
 
 # create final data frame with raw data and predicted means to plot
 df <- BloodHgSamples %>% 
@@ -419,7 +424,7 @@ ggplot() +
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 10, height = 6)
 
 ggsave("Publication-Figures/Predicted_TrophicxSeason_Blood_Hist.jpg",
-       dpi = 1200, width = 10, height = 6)
+       dpi = 1200, width = 7, height = 5)
 
 
 # TROPHIC NICHE VARIATION ---------------------------------------------
