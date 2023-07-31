@@ -959,7 +959,7 @@ library(raster)
 
 # Google satellite imagery as a background
 library(ggmap)
-register_google(key = "AIzaSyAhVAGnjiPZgt0KtXSO_Od2j67CF6wEmD8", write = TRUE)
+register_google(key = "Insert personal key here", write = TRUE)
 
 # For google map, you have to give the center of the window you are looking at.
 # Possibility for the map type argument: terrain / satellite / roadmap / hybrid
