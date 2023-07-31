@@ -22,7 +22,7 @@ HgSamples <- CollectiveData %>%
   pivot_longer(c(Blood_Hg_ppm, Body_Hg_ppm, Tail_Hg_ppm),
                names_to = "Tissue_Type", values_to = "Hg_Concentration") %>% 
   # only including full species names
-  #filter(!(str_detect(Species_Common_Name, " sp."))) %>% 
+  filter(!(str_detect(Species_Common_Name, " sp."))) %>% 
   # removing NA values in key variables so the models can run
   filter(!is.na(Hg_Concentration), !is.na(Trophic_Niche),
          !is.na(Primary_Habitat), !is.na(Season),
@@ -250,8 +250,7 @@ boxplot(log(Hg_Concentration) ~ Year, HgSamples)
 # TEMPORAL MODEL -----------------------------------------------
 
 BloodHgSamples <- HgSamples %>% 
-  filter(Tissue_Type == "Blood_Hg_ppm", !is.na(Season),
-         Migratory_Status == "Resident")
+  filter(Tissue_Type == "Blood_Hg_ppm", !is.na(Season))
 
 # global temporal model
 temporalmodel <- glmmTMB(log(Hg_Concentration) ~ 
@@ -388,6 +387,9 @@ car::Anova(temporalmodel, type = 3)
 
 # computing post-hoc comparisons to determine significant differences among the modeled means
 emmeans(temporalmodel, ~ Season, type = "response") %>% 
+  cld(Letter = "abcdefg")
+
+emmeans(temporalmodel, ~ Season*Trophic_Niche, type = "response") %>% 
   cld(Letter = "abcdefg")
 
 
