@@ -125,7 +125,7 @@ mean(residuals(FTmodel)) # VERY close to 0
 ## residual plots look great
 
 simulateResiduals(FTmodel, plot = T, refit = F, use.u = T)
-shapiro.test(residuals(FTmodel)) # W = 0.97453, p-value < 2.2e-16, not normal
+shapiro.test(residuals(FTmodel)) # W = 0.97447, p-value < 2.2e-16, not normal
 # residual plots look okay
 
 # Checking for data points with high leverage
@@ -137,32 +137,32 @@ infIndexPlot(inf)
 rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Site_Name"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.91255, p-value = 0.003976, not normal
+shapiro.test(rand$condval) # W = 0.91813, p-value = 0.005949, not normal
 
 rand <- as.data.frame(ranef(FTmodel)) %>%
   filter(grpvar %in% c("Banding_Station_Name:Site_Name"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.93048, p-value = 0.002543, not normal
+shapiro.test(rand$condval) # W = 0.93052, p-value = 0.002553, not normal
 
 rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.94058, p-value = 0.01296, not normal
+shapiro.test(rand$condval) # W = 0.94097, p-value = 0.01343, not normal
 
 rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Species_Latin_Name:Family"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.99215, p-value = 0.0872, normal
+shapiro.test(rand$condval) # W = 0.99216, p-value = 0.08771, normal
 
 rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Band_Num:Species_Latin_Name:Family"))
 ggqqplot(rand$condval) # tails stray from normal
-shapiro.test(rand$condval) # W = 0.96647, p-value < 2.2e-16, not normal
+shapiro.test(rand$condval) # W = 0.96637, p-value < 2.2e-16, not normal
 
 rand <- as.data.frame(ranef(FTmodel)) %>% 
   filter(grpvar %in% c("Year"))
 ggqqplot(rand$condval) # few tail stragglers, but the rest looks okay
-shapiro.test(rand$condval) # W = 0.91285, p-value = 0.2006, normal
+shapiro.test(rand$condval) # W = 0.91115, p-value = 0.1901, normal
 
 # Checking for autocorrelation/independence
 acf(HgSamples$Hg_Concentration) # raw data is autocorrelated
