@@ -12,7 +12,7 @@ La contaminación ambiental por mercurio (Hg) en los trópicos supera nuestra co
 
 ### Author's Note/Instructions:
 
-Welcome to our open-access repository for Sayers et al. (2023), submitted to Ecotoxicology! Here you will find all of the materials necessary to reproduce the results published in the manuscript. 1-Data-Wrangling-Sayers.R pulls in exterior data sources and completes all necessary transformations and filtering, 2-Model-Fitting-Sayers.R builds and conducts the linear mixed-effect model selection, and 3-Figures-Sayers.R produces the published and supplemental figures.
+Welcome to our open-access repository for Sayers et al. (2023). Here you will find all of the materials necessary to reproduce the results published in the manuscript. 1-Data-Wrangling-Sayers.R pulls in exterior data sources and completes all necessary transformations and filtering, 2-Model-Fitting-Sayers.R builds and conducts the linear mixed-effect model selection, and 3-Figures-Sayers.R produces the published and supplemental figures.
 
 If you have any issues, general questions, or would like to collaborate with the Tropical Research for Avian Conservation and Ecotoxicology (TRACE) Initiative, please feel free to email me at csayers2@ucla.edu or visit us at https://briwildlife.org/trace/. Enjoy!
 
