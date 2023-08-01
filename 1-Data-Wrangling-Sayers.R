@@ -1318,13 +1318,14 @@ CollectiveData <- left_join(TRACEData, taxa, by = "Species_Latin_Name") %>%
   mutate(Tail_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Tail_Hg_ppm), NA, Tail_Hg_ppm)) %>%
   mutate(Body_Hg_ppm = ifelse(Migratory_Status != "Resident" & !is.na(Body_Hg_ppm), NA, Body_Hg_ppm)) %>%
   # renaming sites per CINCIA's temporary request
-  mutate(Site_Name = if_else(Site_Name == "Azul Mine", "Reserva Nacional Tambopata - Azul", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "La Torre", "Reserva Nacional Tambopata - La Torre", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "Laberinto", Site_Name)) %>%
-  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "Inambari", Site_Name))
+  mutate(Site_Name = if_else(Site_Name == "Azul Mine", "ASGM Site A", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "La Torre", "Control Site", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Paolita Mine", "ASGM Site B", Site_Name)) %>%
+  mutate(Site_Name = if_else(Site_Name == "Santa Rita Mine", "ASGM Site C", Site_Name))
 
 # getting rid of weird blanks in data frame
 CollectiveData[CollectiveData == ""] <- NA
+
 
 # PRODUCING SUMMARY STATISTICS --------------------------------------------
 
@@ -1401,6 +1402,16 @@ summary <- CollectiveData %>%
   count(Species_Latin_Name) %>% 
   view()
 nrow(summary)
+
+# How many taxa and individuals are at risk of Hg reproductive impacts?
+summary <- CollectiveData %>% 
+  filter(Blood_Hg_ppm >= 0.7 | Body_Hg_ppm >= 2.4 | Tail_Hg_ppm >= 3) %>% 
+  count(Family, Species_Latin_Name) %>% 
+  view()
+sum(summary$n)
+# 9.5% (221/2316) of individuals across 26% (85/322) of species and 45% (23/51)
+# of families and within our sampled community are at risk to a 10% or greater
+# reduction in reproductive success.
   
 # How many total sampled sites do we have?
 summary <- CollectiveData %>%
