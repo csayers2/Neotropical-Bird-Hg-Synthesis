@@ -225,7 +225,7 @@ as.data.frame(confint(topFTmodel)) %>%
 # RE estimates are SDs
 # back-transformed ASGM-present estimate = 3.78
 performance::r2(topFTmodel)
-car::Anova(topFTmodel, type = 3)
+car::Anova(topFTmodel, type = 2)
 
 # computing post-hoc comparisons to determine significant differences among the modeled means
 emmeans(topFTmodel, ~ Tissue_Type, type = "response") %>% 
@@ -269,7 +269,7 @@ summary(temporalmodel)
 as.data.frame(confint(temporalmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
 performance::r2(temporalmodel)
-car::Anova(temporalmodel, type = 3)
+car::Anova(temporalmodel, type = 2)
 
 # CHECKING MODEL ASSUMPTIONS -------------------------------------
 # Checking for homogeneity of variance & normality of residuals
@@ -381,9 +381,8 @@ temporalmodel <- glmmTMB(log(Hg_Concentration) ~ Season*Trophic_Niche +
 summary(temporalmodel)
 as.data.frame(confint(temporalmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
-# back-transformed wet season estimate = 0.763 = dry season is 31% higher Hg
 performance::r2(temporalmodel)
-car::Anova(temporalmodel, type = 3)
+car::Anova(temporalmodel, type = 2)
 
 # computing post-hoc comparisons to determine significant differences among the modeled means
 emmeans(temporalmodel, ~ Season, type = "response") %>% 
@@ -391,21 +390,3 @@ emmeans(temporalmodel, ~ Season, type = "response") %>%
 
 emmeans(temporalmodel, ~ Season*Trophic_Niche, type = "response") %>% 
   cld(Letter = "abcdefg")
-
-
-
-# aggregate effect of season is not significantly different
-car::Anova(temporalmodel, type = 2)
-
-# temporal model to determine aggregate seasonal effect across trophic niches
-temporalmodel <- glmmTMB(log(Hg_Concentration) ~ Season + 
-                           (1 | Site_Name/Banding_Station_Name) +
-                           (1 | Family/Species_Latin_Name/Band_Num) +
-                           (1 | Year),
-                         data = BloodHgSamples, family = "gaussian", REML = F)
-
-summary(temporalmodel)
-as.data.frame(confint(temporalmodel)) %>% 
-  mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
-performance::r2(temporalmodel)
-car::Anova(temporalmodel, type = 3)
