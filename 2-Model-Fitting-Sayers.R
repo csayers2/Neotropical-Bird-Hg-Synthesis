@@ -104,7 +104,7 @@ summary(FTmodel)
 as.data.frame(confint(FTmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
 performance::r2(FTmodel)
-car::Anova(FTmodel, type = 3)
+car::Anova(FTmodel, type = 2)
 
 
 # CHECKING MODEL ASSUMPTIONS -------------------------------------
@@ -196,7 +196,7 @@ summary(FTmodel)
 as.data.frame(confint(FTmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
 performance::r2(FTmodel)
-car::Anova(FTmodel, type = 3)
+car::Anova(FTmodel, type = 2)
 
 options(na.action = "na.fail")
 # computes marginal and conditional R^2
@@ -356,7 +356,7 @@ summary(temporalmodel)
 as.data.frame(confint(temporalmodel)) %>% 
   mutate(Estimate = exp(Estimate), `2.5 %` = exp(`2.5 %`), `97.5 %` = exp(`97.5 %`))
 performance::r2(temporalmodel)
-car::Anova(temporalmodel, type = 3)
+car::Anova(temporalmodel, type = 2)
 
 options(na.action = "na.fail")
 # computes marginal and conditional R^2
