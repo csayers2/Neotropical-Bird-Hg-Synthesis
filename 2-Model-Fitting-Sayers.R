@@ -129,9 +129,9 @@ shapiro.test(residuals(FTmodel)) # W = 0.97447, p-value < 2.2e-16, not normal
 # residual plots look okay
 
 # Checking for data points with high leverage
-source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
-inf <- influence_mixed(FTmodel)
-infIndexPlot(inf)
+#source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
+#inf <- influence_mixed(FTmodel)
+#infIndexPlot(inf)
 
 # Checking for normality of random effects
 rand <- as.data.frame(ranef(FTmodel)) %>% 
@@ -292,9 +292,9 @@ shapiro.test(residuals(temporalmodel)) # W = 0.96664, p-value = 2.821e-10, not n
 # residual plots look okay
 
 # Checking for data points with high leverage
-source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
-inf <- influence_mixed(temporalmodel)
-infIndexPlot(inf)
+#source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
+#inf <- influence_mixed(temporalmodel)
+#infIndexPlot(inf)
 
 # Checking for normality of random effects
 rand <- as.data.frame(ranef(temporalmodel)) %>% 
@@ -390,3 +390,4 @@ emmeans(temporalmodel, ~ Season, type = "response") %>%
 
 emmeans(temporalmodel, ~ Season*Trophic_Niche, type = "response") %>% 
   cld(Letter = "abcdefg")
+
