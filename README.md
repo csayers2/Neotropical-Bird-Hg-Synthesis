@@ -21,4 +21,5 @@ Cheers,
 
 Chris Sayers
 
-![GAbstract_Satellite_Circle_AllTissue](https://github.com/csayers2/Neotropical-Bird-Hg-Synthesis/assets/51534958/a7c35358-4a84-42d1-ae71-c2ba1ba69a4b)
+
+![GAbstract_Satellite_Circle_AllTissue](https://github.com/csayers2/Neotropical-Bird-Hg-Synthesis/assets/51534958/4ad22f0b-0ea0-4ada-b998-fee6e80540df)
