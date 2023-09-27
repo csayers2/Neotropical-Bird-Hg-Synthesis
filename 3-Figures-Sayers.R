@@ -1282,7 +1282,7 @@ GAbstractN <- ggmap(satellitemap) +
   #geom_bin2d(data = MapData, mapping = aes(x = Site_Long, y = Site_Lat)) +
   #scale_fill_viridis_c() +
   scale_fill_gradient(high = "red", low = "yellow", breaks = c(200, 400, 600)) +
-  labs(x = "Longitude", y = "Latitude", fill = "Tail feather\nsample size") +
+  labs(x = "Longitude", y = "Latitude", fill = "Sample size") +
   #ggtitle("Resident species only") +
   theme_classic(base_size = 14) +
   theme(#axis.title.x = element_text(face = "bold"),

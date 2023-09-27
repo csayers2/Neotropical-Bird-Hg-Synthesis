@@ -62,7 +62,7 @@ TRACEData <- read.csv("TRACE_Database_28Jul2023.csv", na.strings = c("",".","NA"
                                                                                   "Dry")))))))))
 
 
-##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2019 CLASSIFICATIONS #####
+##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2022 CLASSIFICATIONS #####
 
 # not sure why the .csv file isn't available yet
 taxa <- read.csv("NEW_eBird-Clements-v2022-integrated-checklist-October-2022.csv") %>%
@@ -219,7 +219,7 @@ parker <- parker %>%
 # Which species were STILL not joined due to taxonomic changes or subspecies? — eventually will be 0
 unjoined <- anti_join(TRACEData, parker, by = "Species_Latin_Name")
 unique(unjoined$Species_Latin_Name)
-# We have 35 taxa that have been split/lumped since 1996 or were just excluded from the df
+# We have 34 taxa that have been split/lumped since 1996 or were just excluded from the df
 
 # Manually adding species to accommodate for splits/lumps information using BOW criteria
 # I am choosing to leave the original classifications in the df so that we can reference it later if necessary
