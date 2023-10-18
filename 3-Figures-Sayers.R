@@ -116,7 +116,7 @@ ggplot() +
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
 ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.jpg", dpi = 1200, width = 15, height = 5)
-ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 5)
+#ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 5)
 
 
 # PREDICTED PRIMARY HABITAT x ASGM ------------------------------------------
@@ -201,7 +201,7 @@ ggplot() +
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
 ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.jpg", dpi = 1200, width = 15, height = 5)
-ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 5)
+#ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 5)
 
 
 # PREDICTED FAMILY x ASGM -----------------------------------------------------
@@ -280,7 +280,7 @@ ggplot() +
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 10)
 
 ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.jpg", dpi = 1200, width = 15, height = 10)
-ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 10)
+#ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 10)
 
 
 # PREDICTED SITE -----------------------------------------------------
@@ -356,7 +356,7 @@ ggplot() +
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 10)
 
 ggsave("Publication-Figures/Predicted_Site_AllTissues_Hist.jpg", dpi = 1200, width = 15, height = 10)
-ggsave("Publication-Figures/Predicted_Site_AllTissues_Hist.tiff", dpi = 600, width = 15, height = 10)
+#ggsave("Publication-Figures/Predicted_Site_AllTissues_Hist.tiff", dpi = 600, width = 15, height = 10)
 
 
 # PREDICTED TROPHIC NICHE x SEASON ---------------------------------------------
@@ -946,7 +946,7 @@ ggarrange(bloodrisk, bodyrisk, tailrisk, labels = c("a)", "b)", "c)"), nrow = 3,
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 12, height = 24)
 
 ggsave("Publication-Figures/Fig4_Facet_Risk_AllTissues.jpg", dpi = 1200, width = 12, height = 24)
-ggsave("Publication-Figures/Fig4_Facet_Risk_AllTissues.tiff", dpi = 600, width = 12, height = 24)
+#ggsave("Publication-Figures/Fig4_Facet_Risk_AllTissues.tiff", dpi = 600, width = 12, height = 24)
 
 
 # HG MAPS ------------------------------------------------------------------
@@ -1213,8 +1213,9 @@ ggarrange(bloodmap, bloodsamplemap, bodymap, bodysamplemap, tailmap, tailsamplem
           labels = c("a)", "b)", "c)", "d)", "e)", "f)"),
           nrow = 3, ncol = 2)
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 16.5, height = 18)
+
 ggsave("Publication-Figures/Fig5_Facet_Map_AllTissueConcSample.jpg", dpi = 1200, width = 16.5, height = 18)
-ggsave("Publication-Figures/Fig5_Facet_Map_AllTissueConcSample.tiff", dpi = 600, width = 16.5, height = 18)
+#ggsave("Publication-Figures/Fig5_Facet_Map_AllTissueConcSample.tiff", dpi = 600, width = 16.5, height = 18)
 
 
 # Graphical abstract Hg
@@ -1302,6 +1303,7 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
 
 ggarrange(GAbstractHg, GAbstractN, nrow = 1, ncol = 2)
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 16, height = 6)
+
 ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.jpg", dpi = 1200, width = 16, height = 6)
-ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.tiff", dpi = 600, width = 16, height = 6)
+#ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.tiff", dpi = 600, width = 16, height = 6)
 
