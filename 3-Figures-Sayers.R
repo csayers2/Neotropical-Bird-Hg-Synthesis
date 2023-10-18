@@ -115,8 +115,8 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
-ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.jpg",
-       dpi = 1200, width = 15, height = 5)
+ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.jpg", dpi = 1200, width = 15, height = 5)
+ggsave("Publication-Figures/Fig1_Predicted_TrophicxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 5)
 
 
 # PREDICTED PRIMARY HABITAT x ASGM ------------------------------------------
@@ -200,8 +200,8 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
-ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.jpg",
-       dpi = 1200, width = 15, height = 5)
+ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.jpg", dpi = 1200, width = 15, height = 5)
+ggsave("Publication-Figures/Fig2_Predicted_HabitatxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 5)
 
 
 # PREDICTED FAMILY x ASGM -----------------------------------------------------
@@ -279,8 +279,8 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 10)
 
-ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.jpg",
-       dpi = 1200, width = 15, height = 10)
+ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.jpg", dpi = 1200, width = 15, height = 10)
+ggsave("Publication-Figures/Fig3_Predicted_FamilyxASGM_AllTissues.tiff", dpi = 600, width = 15, height = 10)
 
 
 # PREDICTED SITE -----------------------------------------------------
@@ -355,8 +355,8 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 10)
 
-ggsave("Publication-Figures/Predicted_Site_AllTissues_Hist.jpg",
-       dpi = 1200, width = 15, height = 10)
+ggsave("Publication-Figures/Predicted_Site_AllTissues_Hist.jpg", dpi = 1200, width = 15, height = 10)
+ggsave("Publication-Figures/Predicted_Site_AllTissues_Hist.tiff", dpi = 600, width = 15, height = 10)
 
 
 # PREDICTED TROPHIC NICHE x SEASON ---------------------------------------------
@@ -423,9 +423,7 @@ ggplot() +
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 10, height = 6)
 
-ggsave("Publication-Figures/Predicted_TrophicxSeason_Blood_Hist.jpg",
-       dpi = 1200, width = 7, height = 5)
-
+ggsave("Publication-Figures/Predicted_TrophicxSeason_Blood_Hist.jpg", dpi = 1200, width = 7, height = 5)
 
 # TROPHIC NICHE VARIATION ---------------------------------------------
 
@@ -488,8 +486,7 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Trophic_Niche, max_percentile)
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
-ggsave("Publication-Figures/TrophicNiche_AllTissues_Hist.jpg",
-       dpi = 1200, width = 15, height = 5)
+ggsave("Publication-Figures/TrophicNiche_AllTissues_Hist.jpg", dpi = 1200, width = 15, height = 5)
 
 
 # SPECIES HABITAT VARIATION ---------------------------------------------
@@ -553,8 +550,7 @@ ggplot(final, mapping = aes(x = mean, y = reorder(Primary_Habitat, max_percentil
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 15, height = 5)
 
-ggsave("Publication-Figures/SpeciesHabitat_AllTissues_Hist.jpg",
-       dpi = 1200, width = 15, height = 5)
+ggsave("Publication-Figures/SpeciesHabitat_AllTissues_Hist.jpg", dpi = 1200, width = 15, height = 5)
 
 
 # ORDER VARIATION ---------------------------------------------------------
@@ -950,6 +946,7 @@ ggarrange(bloodrisk, bodyrisk, tailrisk, labels = c("a)", "b)", "c)"), nrow = 3,
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 12, height = 24)
 
 ggsave("Publication-Figures/Fig4_Facet_Risk_AllTissues.jpg", dpi = 1200, width = 12, height = 24)
+ggsave("Publication-Figures/Fig4_Facet_Risk_AllTissues.tiff", dpi = 600, width = 12, height = 24)
 
 
 # HG MAPS ------------------------------------------------------------------
@@ -959,7 +956,7 @@ library(raster)
 
 # Google satellite imagery as a background
 library(ggmap)
-register_google(key = "Insert personal key here", write = TRUE)
+#register_google(key = "Insert personal key here", write = TRUE)
 
 # For google map, you have to give the center of the window you are looking at.
 # Possibility for the map type argument: terrain / satellite / roadmap / hybrid
@@ -1217,6 +1214,7 @@ ggarrange(bloodmap, bloodsamplemap, bodymap, bodysamplemap, tailmap, tailsamplem
           nrow = 3, ncol = 2)
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 16.5, height = 18)
 ggsave("Publication-Figures/Fig5_Facet_Map_AllTissueConcSample.jpg", dpi = 1200, width = 16.5, height = 18)
+ggsave("Publication-Figures/Fig5_Facet_Map_AllTissueConcSample.tiff", dpi = 600, width = 16.5, height = 18)
 
 
 # Graphical abstract Hg
@@ -1255,6 +1253,8 @@ GAbstractHg <- ggmap(satellitemap) +
   guides(size = "none") # removing size legend 
 
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
+
+ggsave("Publication-Figures/GAbstractHg.jpg", dpi = 1200, width = 8, height = 6)
 
 
 # Graphical abstract sample map
@@ -1303,4 +1303,5 @@ ggview(device = "jpeg", units = "in", dpi = 1200, width = 8, height = 6)
 ggarrange(GAbstractHg, GAbstractN, nrow = 1, ncol = 2)
 ggview(device = "jpeg", units = "in", dpi = 1200, width = 16, height = 6)
 ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.jpg", dpi = 1200, width = 16, height = 6)
+ggsave("Publication-Figures/GAbstract_Satellite_Circle_AllTissue.tiff", dpi = 600, width = 16, height = 6)
 
