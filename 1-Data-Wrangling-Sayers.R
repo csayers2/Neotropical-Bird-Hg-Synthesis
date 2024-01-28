@@ -64,7 +64,6 @@ TRACEData <- read.csv("TRACE_Database_28Jul2023.csv", na.strings = c("",".","NA"
 
 ##### ADDING ORDER AND FAMILY USING eBIRD/CLEMENTS v2022 CLASSIFICATIONS #####
 
-# not sure why the .csv file isn't available yet
 taxa <- read.csv("NEW_eBird-Clements-v2022-integrated-checklist-October-2022.csv") %>%
   rename(Species_Latin_Name = SCI_NAME, Order = ORDER1, Family = FAMILY) %>% # renaming key column names
   select(Species_Latin_Name, Order, Family)
